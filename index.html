@@ -305,11 +305,12 @@ function update(){let cfg={};try{cfg=JSON.parse(localStorage.getItem(cfgKey)||se
  const configured=!!(cfg.owner&&cfg.repo&&cfg.token);
  const message=(status.textContent||'').trim();
  if(/odpojen|neexistuje|chyba|konflikt|selhal|nelze|nepodař|synchronizace:/.test(message.toLowerCase()))lastSuccess=false;
- if(configured&&/data synchronizována|společná data načtena|načteny změny|data uložena na github/i.test(message))lastSuccess=true;
+ // Úspěch určuje skutečné dokončení GitHub operace, ne text oznámení.
  badge.classList.toggle('synced',configured&&lastSuccess);
  badge.classList.toggle('error',configured&&/chyba|konflikt|synchronizace:/i.test(message));
  badge.textContent=!configured?'⚠ Nepřipojeno':lastSuccess?'✓ GitHub: data synchronizována':'◷ GitHub: připojeno – ověřuji synchronizaci…';
 }
+window.addEventListener('sportka-github-sync',e=>{lastSuccess=!!e.detail.ok;update()});
 new MutationObserver(update).observe(status,{childList:true,characterData:true,subtree:true});
 ['connect','pull','push','disconnect'].forEach(id=>document.getElementById(id)?.addEventListener('click',()=>setTimeout(update,0)));
 window.addEventListener('storage',update);update();

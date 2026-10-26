@@ -6,6 +6,7 @@ const limitPredictions=d=>{if(Array.isArray(d?.predictions)&&d.predictions.lengt
 limitPredictions(data);
 let cfg;try{cfg=JSON.parse(localStorage.getItem(CFG)||sessionStorage.getItem(CFG)||'{}')||{}}catch{cfg={}}if(cfg.owner&&cfg.repo&&cfg.token){localStorage.setItem(CFG,JSON.stringify(cfg));sessionStorage.removeItem(CFG)}let sha=null,dirty=localStorage.getItem(DIRTY)==='1',saving=false,timer,revision=0,conflict=false,polling=false;const SYNC_MS=15000;
 let toastTimer;const info=(s,bad=false)=>{const status=$('status');status.textContent=s;status.style.color=bad?'#ff8888':'#ffd27b';const el=$('sportkaToast');if(!el)return;let type=bad?'error':/žádné|není co|nejsou nové|vyber|upozornění/i.test(s)?'warning':/vygenerováno|vyhodnoceno|uložena|synchronizována|načteny|provedena|vrácena/i.test(s)?'success':'info';el.textContent=s;el.className='sportka-toast '+type+' visible';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('visible'),bad?4500:3000)};
+const syncSignal=(ok)=>window.dispatchEvent(new CustomEvent('sportka-github-sync',{detail:{ok}}));
 const store=()=>localStorage.setItem(KEY,JSON.stringify(data));const config=()=>cfg.owner&&cfg.repo&&cfg.token;
 const persist=()=>{revision++;dirty=true;conflict=false;localStorage.setItem(DIRTY,'1');store();if(config()){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>info(e.message,true)),1500)}};
 // Historie uživatelských změn v rámci aktuálního otevření aplikace.
@@ -80,7 +81,7 @@ async function pull(force=false){
  let d;try{d=JSON.parse(decode(j.content))}catch{throw Error('Společný JSON nelze přečíst. Místní sázky zůstaly zachovány.')}
  validate(d);if(revision!==rev)throw Error('Během načítání vznikly místní změny. Společná data nebyla použita.');
  const history=data.history;data=d;clearUndo();sha=j.sha;dirty=false;conflict=false;localStorage.removeItem(DIRTY);
- mergeHistory(history);evaluate(true);store();render();return true
+ mergeHistory(history);evaluate(true);store();render();syncSignal(true);return true
 }
 async function push(){
  if(saving)throw Error('Právě probíhá automatické ukládání.');
@@ -95,7 +96,7 @@ async function saveToGitHub(){
  sha=j.content.sha;
  if(revision===rev){dirty=false;conflict=false;localStorage.removeItem(DIRTY)}
  else {dirty=true;localStorage.setItem(DIRTY,'1');setTimeout(()=>autosave().catch(e=>info(e.message,true)),1500)}
- info('GitHub: data synchronizována.');
+ syncSignal(true);info('GitHub: data synchronizována.');
 }
 async function autosave(){
  if(!config()||saving||!dirty||conflict||!navigator.onLine)return;
@@ -120,13 +121,13 @@ async function periodicSync(){
  try{
   if(dirty){if(!conflict)await autosave();return}
   const rev=revision,latest=await remote();if(!latest)return;
-  if(latest.sha===sha)return;
+  if(latest.sha===sha){syncSignal(true);return;}
   let d;try{d=JSON.parse(decode(latest.content))}catch{throw Error('Společný JSON nelze přečíst. Místní data zůstala zachována.')}
   validate(d);
   if(dirty||revision!==rev||saving)return;
   const history=data.history;data=d;sha=latest.sha;clearUndo();mergeHistory(history);evaluate(true);store();render();
-  info('GitHub: načteny změny z druhého zařízení.');
- }catch(e){info('Synchronizace: '+e.message,true)}finally{polling=false}
+  syncSignal(true);info('GitHub: načteny změny z druhého zařízení.');
+ }catch(e){syncSignal(false);info('Synchronizace: '+e.message,true)}finally{polling=false}
 }
 function download(name,s){let blob=new Blob([s],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
 const historyCSV=()=>['datum;rok;tyden;den;1. cislo 1. tah;2. cislo 1. tah;3. cislo 1. tah;4. cislo 1. tah;5. cislo 1. tah;6. cislo 1. tah;dodatkove cislo 1. tah;1. cislo 2. tah;2. cislo 2. tah;3. cislo 2. tah;4. cislo 2. tah;5. cislo 2. tah;6. cislo 2. tah;dodatkove cislo 2. tah',...data.history.slice().reverse().map(h=>[h.date.split('-').reverse().join('.'),h.date.slice(0,4),'','',...h.draws[0].numbers,h.draws[0].bonus,...h.draws[1].numbers,h.draws[1].bonus].join(';'))].join('\r\n')+'\r\n';
