@@ -32,7 +32,34 @@ function structure(a){let low=a.filter(n=>n<=25).length,even=a.filter(n=>n%2===0
 function score(a,s){let p=combinations(a,2),t=combinations(a,3);return a.reduce((v,n)=>v+(s.single.get(n)||0)*28+(s.learn.get(n)||0)/s.ls*2.5,0)+p.reduce((v,k)=>v+(s.pairs.get(k)||0)*13+(s.learnPairs.get(k)||0)/s.lps*1.5,0)+t.reduce((v,k)=>v+(s.triples.get(k)||0)*2.5,0)+structure(a)}
 function randomLine(s,uniform=false){let available=Array.from({length:49},(_,i)=>i+1),weights=available.map(n=>uniform?1:Math.pow((s.freq.get(n)||0)+1,.25)),out=[];for(let j=0;j<6;j++){let total=weights.reduce((a,b)=>a+b,0),r=Math.random()*total,i=0;for(;i<weights.length-1;i++){r-=weights[i];if(r<=0)break}out.push(available.splice(i,1)[0]);weights.splice(i,1)}return out.sort((a,b)=>a-b)}
 function generate(initialRun=false){if(!data.history.length)throw Error('Chybí historie losování.');let s=stats(),excluded=new Set(data.bets.map(b=>key(b.numbers))),seen=new Set(),candidates=[];for(let i=0;i<30000;i++){let a=randomLine(s,i%5===0),k=a.join(',');if(seen.has(k)||excluded.has(k))continue;seen.add(k);candidates.push({a,score:score(a,s)})}candidates.sort((a,b)=>b.score-a.score);candidates=candidates.slice(0,6000);let chosen=[],usage=Array(50).fill(0);for(let j=0;j<6;j++){let best=null,top=-Infinity;for(let pool of [candidates.slice(0,1400),candidates]){for(let c of pool){if(c.a.some(n=>usage[n]>=4)||chosen.some(a=>a.filter(n=>c.a.includes(n)).length>2))continue;let repeated=c.a.reduce((v,n)=>v+usage[n],0),avg=chosen.length?chosen.reduce((v,a)=>v+a.filter(n=>c.a.includes(n)).length,0)/chosen.length:0,bonus=chosen.length?Math.max(0,6-repeated)+(avg<=1?7:avg<=1.5?4:1):0,value=c.score+bonus;if(value>top){top=value;best=c}}if(best)break}if(!best)throw Error('Nelze sestavit šest sloupců bez porušení omezení.');chosen.push(best.a);best.a.forEach(n=>usage[n]++)}if(!initialRun)checkpoint();data.predictions=chosen;if(initialRun)store();else persist();render();info(`Vygenerováno 6 kombinací. Historie: ${data.history.length} losování, učení: ${s.checked} ověřených sázek.`)}
-function render(){let pred=$('predictions');pred.replaceChildren();data.predictions.forEach((a,i)=>{let card=document.createElement('div');card.className='ticket';let h=document.createElement('h3');h.textContent=`Kombinace ${i+1}`;card.append(h);let grid=document.createElement('div');grid.className='balls';for(let n=1;n<=49;n++){let ball=document.createElement('span');ball.className='ball'+(a.includes(n)?' on':'');ball.textContent=n;grid.append(ball)}card.append(grid);pred.append(card)});$('save').disabled=data.predictions.length!==6;let tbody=$('bets');tbody.replaceChildren();
+function updatePredictionCount(card,a,i){
+ const h=card.querySelector('h3');if(!h)return;
+ h.replaceChildren(document.createTextNode(`Kombinace ${i+1} (`));
+ const count=document.createElement('span');count.textContent=String(a.length);
+ if(a.length!==6)count.className='prediction-count-error';
+ h.append(count,document.createTextNode(')'));
+}
+function firstIncompletePrediction(){return data.predictions.findIndex(a=>!valid(a))}
+function render(){let pred=$('predictions');pred.replaceChildren();data.predictions.forEach((a,i)=>{
+ let card=document.createElement('div');card.className='ticket';let h=document.createElement('h3');card.append(h);
+ let grid=document.createElement('div');grid.className='balls';
+ for(let n=1;n<=49;n++){
+  let ball=document.createElement('span');ball.className='ball'+(a.includes(n)?' on':'');ball.textContent=n;
+  ball.setAttribute('role','button');ball.tabIndex=0;ball.setAttribute('aria-pressed',String(a.includes(n)));
+  ball.setAttribute('aria-label',`Kombinace ${i+1}, číslo ${n}`);
+  const toggle=()=>{
+   const pos=a.indexOf(n);
+   if(pos>=0){a.splice(pos,1)}else if(a.length<6){a.push(n);a.sort((x,y)=>x-y)}
+   else{info(`Kombinace ${i+1} už obsahuje 6 čísel. Nejprve některé odznač.`,true);return}
+   ball.classList.toggle('on',a.includes(n));ball.setAttribute('aria-pressed',String(a.includes(n)));
+   updatePredictionCount(card,a,i);persist();updateAttention();
+  };
+  ball.addEventListener('click',toggle);
+  ball.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle()}});
+  grid.append(ball)
+ }
+ card.append(grid);updatePredictionCount(card,a,i);pred.append(card)
+});$('save').disabled=data.predictions.length!==6;let tbody=$('bets');tbody.replaceChildren();
 let dated=new Map();for(let bet of [...data.bets].sort((a,b)=>b.date.localeCompare(a.date)||(a.order||0)-(b.order||0))){if(!dated.has(bet.date))dated.set(bet.date,[]);dated.get(bet.date).push(bet)}
 for(let [day,all] of dated){for(let offset=0;offset<all.length;offset+=8){let group=all.slice(offset,offset+8),groupIndex=Math.floor(offset/8)+1;
 for(let [i,bet] of group.entries()){
@@ -133,7 +160,14 @@ function download(name,s){let blob=new Blob([s],{type:'text/plain;charset=utf-8'
 const historyCSV=()=>['datum;rok;tyden;den;1. cislo 1. tah;2. cislo 1. tah;3. cislo 1. tah;4. cislo 1. tah;5. cislo 1. tah;6. cislo 1. tah;dodatkove cislo 1. tah;1. cislo 2. tah;2. cislo 2. tah;3. cislo 2. tah;4. cislo 2. tah;5. cislo 2. tah;6. cislo 2. tah;dodatkove cislo 2. tah',...data.history.slice().reverse().map(h=>[h.date.split('-').reverse().join('.'),h.date.slice(0,4),'','',...h.draws[0].numbers,h.draws[0].bonus,...h.draws[1].numbers,h.draws[1].bonus].join(';'))].join('\r\n')+'\r\n';
 const betsCSV=()=>['datum;kombinace;castka;metoda;vysledek;tah 1;tah 2',...data.bets.map(b=>[b.date.split('-').reverse().join('.'),b.numbers.join(','),b.amount||0,b.method||'Sportka AI WEB',String(b.result).startsWith('Výhra')?'vyhra':String(b.result).toLowerCase().includes('prohra')?'prohra':'',b.hits1||'',b.hits2||''].join(';'))].join('\r\n')+'\r\n';
 const act=(id,fn)=>$(id).onclick=async()=>{try{await fn()}catch(e){info(e.message,true)}};
-act('generate',()=>generate());act('save',()=>{let d=$('date').value;if(!d||![0,3,5].includes(new Date(d+'T12:00:00').getDay()))throw Error('Vyber středu, pátek nebo neděli.');if(d<new Date().toLocaleDateString('sv-SE'))throw Error('Nelze uložit sázku na minulé datum.');if(data.predictions.length!==6)throw Error('Nejdříve vygeneruj šest kombinací.');let old=new Set(data.bets.filter(b=>b.date!==d).map(b=>key(b.numbers))),batch=new Set(),accepted=[];for(let a of data.predictions){let k=key(a);if(!k||old.has(k)||batch.has(k))continue;batch.add(k);accepted.push(a)}if(!accepted.length)throw Error('Všechny kombinace už byly vsazeny; nic se nezměnilo.');if(!confirm(`Uložit ${accepted.length} sázek na ${d}? Původní sázky stejného dne se nahradí.`))return;checkpoint();data.bets=data.bets.filter(b=>b.date!==d);accepted.forEach((a,i)=>data.bets.push({date:d,numbers:a,result:'Nevyhodnoceno',hits1:'',hits2:'',method:'Sportka AI WEB',amount:'0',order:i+1}));persist();render();info(`Uloženo ${accepted.length} sázek.`)});
+act('generate',()=>generate());act('save',()=>{let d=$('date').value;if(!d||![0,3,5].includes(new Date(d+'T12:00:00').getDay()))throw Error('Vyber středu, pátek nebo neděli.');if(d<new Date().toLocaleDateString('sv-SE'))throw Error('Nelze uložit sázku na minulé datum.');if(data.predictions.length!==6)throw Error('Nejdříve vygeneruj šest kombinací.');
+ const incomplete=firstIncompletePrediction();
+ if(incomplete!==-1){
+  const missing=6-data.predictions[incomplete].length;
+  if(matchMedia('(max-width:700px)').matches){$('predictions').children[incomplete]?.scrollIntoView({behavior:'smooth',block:'center'})}
+  throw Error(`Kombinace ${incomplete+1}: chybí ${missing} ${missing===1?'číslo':missing>=2&&missing<=4?'čísla':'čísel'}. Pro uložení musí mít každá kombinace 6 čísel.`)
+ }
+ let old=new Set(data.bets.filter(b=>b.date!==d).map(b=>key(b.numbers))),batch=new Set(),accepted=[];for(let a of data.predictions){let k=key(a);if(!k||old.has(k)||batch.has(k))continue;batch.add(k);accepted.push(a)}if(!accepted.length)throw Error('Všechny kombinace už byly vsazeny; nic se nezměnilo.');checkpoint();data.bets=data.bets.filter(b=>b.date!==d);accepted.forEach((a,i)=>data.bets.push({date:d,numbers:a,result:'Nevyhodnoceno',hits1:'',hits2:'',method:'Sportka AI WEB',amount:'0',order:i+1}));persist();render();info(`Uloženo ${accepted.length} sázek.`)});
 act('evaluate',()=>{checkpoint();let n=evaluate();if(!n){undoStack.pop();updateUndoButtons()}render();info(n?`Vyhodnoceno ${n} sázek.`:'Žádné nové výsledky k vyhodnocení.')});
 act('undo',()=>travel(undoStack,redoStack,'Vrácena poslední změna.'));act('redo',()=>travel(redoStack,undoStack,'Změna znovu provedena.'));updateUndoButtons();
 act('connect',async()=>{cfg={owner:$('owner').value.trim(),repo:$('repo').value.trim(),token:$('token').value.trim()};if(!config())throw Error('Vyplň GitHub uživatele, repozitář a token.');localStorage.setItem(CFG,JSON.stringify(cfg));sessionStorage.removeItem(CFG);sha=null;conflict=false;if(dirty){info('Přístup nastaven. Místní změny nejsou synchronizované – nejprve exportuj zálohu JSON.');return}let ok=await pull();info(ok?'Společná data načtena.':'Přístup nastaven. Společný JSON zatím neexistuje.')});
