@@ -104062,6 +104062,108 @@
         0,
         0
       ]
+    },
+    {
+      "date": "2026-10-28",
+      "numbers": [
+        6,
+        20,
+        29,
+        30,
+        34,
+        44
+      ],
+      "result": "Nevyhodnoceno",
+      "hits1": "",
+      "hits2": "",
+      "method": "Sportka AI WEB",
+      "amount": "0",
+      "order": 1
+    },
+    {
+      "date": "2026-10-28",
+      "numbers": [
+        6,
+        26,
+        40,
+        42,
+        44,
+        47
+      ],
+      "result": "Nevyhodnoceno",
+      "hits1": "",
+      "hits2": "",
+      "method": "Sportka AI WEB",
+      "amount": "0",
+      "order": 2
+    },
+    {
+      "date": "2026-10-28",
+      "numbers": [
+        13,
+        17,
+        26,
+        30,
+        36,
+        47
+      ],
+      "result": "Nevyhodnoceno",
+      "hits1": "",
+      "hits2": "",
+      "method": "Sportka AI WEB",
+      "amount": "0",
+      "order": 3
+    },
+    {
+      "date": "2026-10-28",
+      "numbers": [
+        5,
+        20,
+        29,
+        31,
+        38,
+        47
+      ],
+      "result": "Nevyhodnoceno",
+      "hits1": "",
+      "hits2": "",
+      "method": "Sportka AI WEB",
+      "amount": "0",
+      "order": 4
+    },
+    {
+      "date": "2026-10-28",
+      "numbers": [
+        6,
+        13,
+        14,
+        39,
+        41,
+        44
+      ],
+      "result": "Nevyhodnoceno",
+      "hits1": "",
+      "hits2": "",
+      "method": "Sportka AI WEB",
+      "amount": "0",
+      "order": 5
+    },
+    {
+      "date": "2026-10-28",
+      "numbers": [
+        13,
+        20,
+        23,
+        40,
+        41,
+        47
+      ],
+      "result": "Nevyhodnoceno",
+      "hits1": "",
+      "hits2": "",
+      "method": "Sportka AI WEB",
+      "amount": "0",
+      "order": 6
     }
   ],
   "predictions": [
