@@ -128,6 +128,7 @@ async function push(){
 }
 async function saveToGitHub(){
  if(!config())throw Error('Nejdříve nastav GitHub přístup.');
+ syncStatus('odesílám změny…','info');
  const latest=await remote();
  if((latest?.sha||null)!==sha){conflict=true;throw Error('GitHub konflikt: společná verze se změnila. Zálohuj místní data a načti společnou verzi.')}
  const rev=revision,content=encode(JSON.stringify(data,null,2));
