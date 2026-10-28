@@ -599,6 +599,9 @@ main>section.panel:has(#predictions),main>section.panel:has(.history){padding:0!
 .history-frame .history::-webkit-scrollbar{width:7px;height:7px}
 .history-frame .history::-webkit-scrollbar-track{background:#1a2942}
 .history-frame .history::-webkit-scrollbar-thumb{background:#60718e;border:1px solid #1a2942;border-radius:8px}
+/* Stavové hlášky patří do indikátoru vlevo dole. */
+#githubIndicator.local-change{color:#a8d5ff!important;border-color:#3179bd!important;background:#163a61!important}
+#githubIndicator.sync-success{color:#b5f2c7!important;border-color:#3b875a!important;background:#1a4934!important}
 </style><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"><script src="https://cdn.jsdelivr.net/npm/flatpickr"></script><script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/cs.js"></script></head><body><main><h1>Sportka</h1><div class="bar"><div class="date-menu-row"><button type="button" id="menuToggle" aria-label="Zobrazit akce" aria-expanded="false"><span class="hamburger-icon">☰</span> <span>Menu</span></button><label>Datum sázky: <input id="date" type="text" placeholder="Vyber datum losování" readonly></label></div><div class="action-buttons" id="sportkaActions"><button class="green" id="generate">Generovat nová čísla</button><button id="save" disabled>Uložit všech 6 sázek</button><button class="red" id="evaluate">Vyhodnotit výsledky</button></div></div><p id="status" class="notice" role="status"></p><details class="panel sportka-side" id="sportkaSettings"><summary class="side-tab" aria-label="Otevřít nastavení">⚙ Nastavení · GitHub · import / export</summary><div class="side-inner"><h2>Sportka – synchronizace a data</h2><div class="settings"><input id="owner" placeholder="GitHub uživatel"><input id="repo" placeholder="Repozitář"><input id="token" type="password" placeholder="GitHub token"><button id="connect">Nastavit přístup</button><button id="pull">Načíst společnou</button><button class="green" id="push">Uložit společnou</button><button class="red" id="disconnect">Odpojit klíč</button></div><div class="settings"><label>Import historie <input type="file" id="importHistory" accept=".csv"></label><label>Import sázek <input type="file" id="importBets" accept=".csv"></label><button id="exportHistory">Export historie CSV</button><button id="exportBets">Export sázek CSV</button><button id="exportPred">Export predikcí CSV</button><button id="backup">Záloha JSON</button><label>Obnovit JSON <input type="file" id="restore" accept=".json"></label></div><p class="small">GitHub token se uchovává v localStorage tohoto prohlížeče až do odpojení klíče. Na sdíleném zařízení klíč neukládejte. Společná data: sportka-data.json. Záloha: sportka-zaloha.json. Při konfliktech se data nepřepisují automaticky.</p></div></details><section class="panel prediction-panel"><div class="prediction-title-row"><h2>Predikce (6 sloupců: 6 z 49)</h2><div class="sportka-zoom"><button type="button" id="sportkaZoomOut" title="Zmenšit kombinace">−</button><button type="button" id="sportkaZoomIn" title="Zvětšit kombinace">+</button></div></div><div class="cards" id="predictions"><p class="small">Připravuji šest kombinací…</p></div></section><section class="panel"><div id="githubIndicator" class="github-indicator" role="status">⚠ Nepřipojeno</div><div class="history-heading"><h2>Historie vsazených sázek</h2><div class="undo-actions"><button id="undo" disabled title="Vrátit poslední změnu">↶ Zpět</button><button id="redo" disabled title="Znovu provést změnu">Vpřed ↷</button></div></div><div class="history-frame"><div class="history"><table><thead><tr><th>Datum</th><th>KOMBINACE</th><th>Výsledek</th><th>Shoda 1. tah</th><th>Shoda 2. tah</th><th></th></tr></thead><tbody id="bets"></tbody></table></div></div></section></main><div id="sportkaToast" class="sportka-toast" role="status" aria-live="polite"></div><script src="initial-data.js"></script><script src="web-core.js"></script><script>(function(){
 const b=document.getElementById('menuToggle'), actions=document.getElementById('sportkaActions'),p=document.getElementById('sportkaSettings');
 const mobile=()=>window.matchMedia('(max-width:700px)').matches;
@@ -616,19 +619,44 @@ window.addEventListener('resize',()=>{if(!mobile())closeActions()});document.add
 const badge=document.getElementById('githubIndicator'),status=document.getElementById('status');
 const cfgKey='sportka_github_config';
 let lastSuccess=false;
+let transient=null, transientTimer=null;
+function announce(message,kind,duration=2600){
+ clearTimeout(transientTimer);transient={message,kind};update();
+ transientTimer=setTimeout(()=>{transient=null;update()},duration);
+}
 function update(){let cfg={};try{cfg=JSON.parse(localStorage.getItem(cfgKey)||sessionStorage.getItem(cfgKey)||'{}')}catch{};
  const configured=!!(cfg.owner&&cfg.repo&&cfg.token);
  const message=(status.textContent||'').trim();
  if(/odpojen|neexistuje|chyba|konflikt|selhal|nelze|nepodař|synchronizace:/.test(message.toLowerCase()))lastSuccess=false;
  // Úspěch určuje skutečné dokončení GitHub operace, ne text oznámení.
- badge.classList.toggle('synced',configured&&lastSuccess);
+ badge.classList.toggle('synced',!transient&&configured&&lastSuccess);
+ badge.classList.toggle('local-change',!!transient&&transient.kind==='info');
+ badge.classList.toggle('sync-success',!!transient&&transient.kind==='success');
  badge.classList.toggle('error',configured&&/chyba|konflikt|synchronizace:/i.test(message));
- badge.textContent=!configured?'⚠ Nepřipojeno':lastSuccess?'✓ GitHub: data synchronizována':'◷ GitHub: připojeno – ověřuji synchronizaci…';
+ badge.textContent=transient?transient.message:(!configured?'⚠ Nepřipojeno':lastSuccess?'✓ GitHub: data synchronizována':'◷ GitHub: připojeno – ověřuji synchronizaci…');
 }
-window.addEventListener('sportka-github-sync',e=>{lastSuccess=!!e.detail.ok;update()});
+window.addEventListener('sportka-github-sync',e=>{lastSuccess=!!(e.detail&&e.detail.ok);if(lastSuccess)announce('✓ Data synchronizována','success');else update()});
 new MutationObserver(update).observe(status,{childList:true,characterData:true,subtree:true});
 ['connect','pull','push','disconnect'].forEach(id=>document.getElementById(id)?.addEventListener('click',()=>setTimeout(update,0)));
-window.addEventListener('storage',update);update();
+// Ruční označení čísla: modrá informace v levém dolním indikátoru.
+ document.addEventListener('click',e=>{
+   const ball=e.target.closest('.ticket .ball');if(!ball)return;
+   const selected=ball.classList.contains('on');
+   setTimeout(()=>{if(ball.isConnected&&ball.classList.contains('on')!==selected)announce('● Místní změny – čeká se na synchronizaci','info')},90);
+ },true);
+ // Oznámení o těchto dvou stavech nepatří do středového toastu.
+ const toast=document.getElementById('sportkaToast');
+ if(toast){
+  const obs=new MutationObserver(()=>{
+   const message=(toast.textContent||'').trim();
+   if(/místní změny|data synchronizována/i.test(message)){
+    if(toast.classList.contains('visible'))toast.classList.remove('visible');
+    if(/místní změny/i.test(message))announce('● Místní změny – čeká se na synchronizaci','info');
+   }
+  });
+  obs.observe(toast,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['class']});
+ }
+ window.addEventListener('storage',update);update();
 })();</script><script>
 /* Generovani = modra informace, nikoliv zelene potvrzeni ulozeni. */
 (function(){
@@ -648,30 +676,4 @@ window.addEventListener('storage',update);update();
   observer.observe(toast,{attributes:true,attributeFilter:['class'],childList:true,characterData:true,subtree:true});
 })();
 </script>
-<script>
-/* Oznámení místní změny a potvrzené synchronizace; nemění datovou logiku. */
-(function(){
- const toast=document.getElementById('sportkaToast');
- if(!toast)return;
- let timer;
- function show(message,type){
-   clearTimeout(timer);
-   toast.textContent=message;
-   toast.classList.remove('success','warning','error','info','visible');
-   toast.classList.add(type,'visible');
-   timer=setTimeout(()=>toast.classList.remove('visible'),2600);
- }
- document.addEventListener('click',function(e){
-   const ball=e.target.closest('.ticket .ball');
-   if(!ball)return;
-   const wasSelected=ball.classList.contains('on');
-   setTimeout(()=>{
-     if(!ball.isConnected || ball.classList.contains('on')===wasSelected)return;
-     show('Místní změny – čeká se na synchronizaci','info');
-   },70);
- },true);
- window.addEventListener('sportka-github-sync',function(e){
-   if(e.detail && e.detail.ok)show('Data synchronizována','success');
- });
-})();
-</script></body></html>
+</body></html>
