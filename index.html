@@ -615,52 +615,5 @@ window.addEventListener('resize',()=>{if(!mobile())closeActions()});document.add
  let size=25;const set=()=>document.documentElement.style.setProperty('--sportka-ball-size',size+'px');
  document.getElementById('sportkaZoomOut').addEventListener('click',()=>{size=Math.max(18,size-2);set()});
  document.getElementById('sportkaZoomIn').addEventListener('click',()=>{size=Math.min(35,size+2);set()});
-})();</script><script>(function(){
-// Stejný stavový indikátor jako v Eurojackpotu: žádné dočasné středové okno.
-const badge=document.getElementById('githubIndicator');
-if(!badge)return;
-const CFG='sportka_github_config', DIRTY='sportka_dirty_v1';
-let state='checking';
-function connected(){try{const c=JSON.parse(localStorage.getItem(CFG)||sessionStorage.getItem(CFG)||'{}');return !!(c.owner&&c.repo&&c.token)}catch{return false}}
-function display(){
- const online=connected(),dirty=localStorage.getItem(DIRTY)==='1';
- let kind='info',msg='↻ připojeno – ověřuji synchronizaci';
- if(!online){kind='error';msg='⚠ nepřipojeno'}
- else if(state==='error'){kind='error';msg='⚠ chyba synchronizace'}
- else if(dirty||state==='dirty'){kind='info';msg='↻ místní změny čekají na odeslání'}
- else if(state==='synced'){kind='ok';msg='✓ data synchronizována'}
- badge.textContent=msg;
- badge.style.color=kind==='error'?'#ffbf69':kind==='ok'?'#9be3a5':'#8bb7f0';
- badge.classList.toggle('synced',kind==='ok');
- badge.classList.toggle('error',kind==='error');
- badge.classList.toggle('local-change',kind==='info'&&(dirty||state==='dirty'));
- badge.classList.remove('sync-success');
- badge.title='GitHub: '+msg+' · Kliknutím otevřít nastavení';
-}
-window.addEventListener('sportka-local-change',()=>{state='dirty';display()});
-window.addEventListener('sportka-github-sync',e=>{state=e.detail&&e.detail.ok?'synced':'error';display()});
-window.addEventListener('storage',display);
-['connect','pull','push','disconnect'].forEach(id=>document.getElementById(id)?.addEventListener('click',()=>setTimeout(display,0)));
-// Stavové hlášky se zobrazují pouze ve spodním indikátoru; bez pozorování DOM.
-if(localStorage.getItem(DIRTY)==='1')state='dirty';
-display();
-})();</script><script>
-/* Generovani = modra informace, nikoliv zelene potvrzeni ulozeni. */
-(function(){
-  const toast=document.getElementById('sportkaToast');
-  if(!toast)return;
-  const observer=new MutationObserver(()=>{
-    if(!toast.classList.contains('visible'))return;
-    if(/vygenerov|generov[aá]n|nov[aá] [čc][ií]sla|predikc[eí] (?:byly )?(?:vytvoř|vygenerov)/i.test(toast.textContent||'')){
-      if(!toast.classList.contains('info')){
-        observer.disconnect();
-        toast.classList.remove('success','warning');
-        toast.classList.add('info');
-        observer.observe(toast,{attributes:true,attributeFilter:['class'],childList:true,characterData:true,subtree:true});
-      }
-    }
-  });
-  observer.observe(toast,{attributes:true,attributeFilter:['class'],childList:true,characterData:true,subtree:true});
-})();
-</script>
+})();</script>
 </body></html>

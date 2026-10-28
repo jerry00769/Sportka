@@ -6,9 +6,18 @@ const limitPredictions=d=>{if(Array.isArray(d?.predictions)&&d.predictions.lengt
 limitPredictions(data);
 let cfg;try{cfg=JSON.parse(localStorage.getItem(CFG)||sessionStorage.getItem(CFG)||'{}')||{}}catch{cfg={}}if(cfg.owner&&cfg.repo&&cfg.token){localStorage.setItem(CFG,JSON.stringify(cfg));sessionStorage.removeItem(CFG)}let sha=null,dirty=localStorage.getItem(DIRTY)==='1',saving=false,timer,revision=0,conflict=false,polling=false;const SYNC_MS=15000;
 let toastTimer;const info=(s,bad=false)=>{const status=$('status');status.textContent=s;status.style.color=bad?'#ff8888':'#ffd27b';const el=$('sportkaToast');if(!el)return;let type=/(?:už|již) obsahuje 6 čísel|chybí \d+ (?:číslo|čísla|čísel)|pro uložení musí mít každá kombinace/i.test(s)?'warning':bad?'error':/žádné|není co|nejsou nové|vyber|upozornění/i.test(s)?'warning':/vygenerováno|generování/i.test(s)?'info':/vyhodnoceno|uložena|uloženo|synchronizována|načteny|provedena|vrácena/i.test(s)?'success':'info';el.textContent=s;el.className='sportka-toast '+type+' visible';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('visible'),bad?4500:3000)};
-const syncSignal=(ok)=>window.dispatchEvent(new CustomEvent('sportka-github-sync',{detail:{ok}}));
+const syncBadge=(message,kind='info')=>{
+ const el=$('githubIndicator');if(!el)return;
+ el.textContent=(kind==='ok'?'✓ ':kind==='error'?'⚠ ':'↻ ')+message;
+ el.classList.toggle('synced',kind==='ok');
+ el.classList.toggle('error',kind==='error');
+ el.classList.toggle('local-change',kind==='info');
+ el.classList.toggle('sync-success',kind==='ok');
+ el.title='GitHub: '+message;
+};
+const syncSignal=ok=>syncBadge(ok?'Data synchronizována':'Synchronizace se nezdařila',ok?'ok':'error');
 const store=()=>localStorage.setItem(KEY,JSON.stringify(data));const config=()=>cfg.owner&&cfg.repo&&cfg.token;
-const persist=()=>{revision++;dirty=true;conflict=false;localStorage.setItem(DIRTY,'1');store();window.dispatchEvent(new Event('sportka-local-change'));if(config()){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>info(e.message,true)),1500)}};
+const persist=()=>{revision++;dirty=true;conflict=false;localStorage.setItem(DIRTY,'1');store();syncBadge(config()?'Místní změny čekají na odeslání':'Místní změny, GitHub nepřipojen',config()?'info':'error');if(config()){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>{syncBadge(e.message,'error');info(e.message,true)}),1500)}};
 // Historie uživatelských změn v rámci aktuálního otevření aplikace.
 const undoStack=[],redoStack=[],LIMIT=40;
 const snapshot=()=>JSON.stringify(data);
@@ -123,7 +132,7 @@ async function saveToGitHub(){
  sha=j.content.sha;
  if(revision===rev){dirty=false;conflict=false;localStorage.removeItem(DIRTY)}
  else {dirty=true;localStorage.setItem(DIRTY,'1');setTimeout(()=>autosave().catch(e=>info(e.message,true)),1500)}
- syncSignal(true);
+ if(!dirty)syncSignal(true);else syncBadge('Místní změny čekají na odeslání','info');info('GitHub: data synchronizována.');
 }
 async function autosave(){
  if(!config()||saving||!dirty||conflict||!navigator.onLine)return;
@@ -148,13 +157,13 @@ async function periodicSync(){
  try{
   if(dirty){if(!conflict)await autosave();return}
   const rev=revision,latest=await remote();if(!latest)return;
-  if(latest.sha===sha){syncSignal(true);return;}
+  if(latest.sha===sha){if(!dirty)syncBadge('Data synchronizována','ok');return;}
   let d;try{d=JSON.parse(decode(latest.content))}catch{throw Error('Společný JSON nelze přečíst. Místní data zůstala zachována.')}
   validate(d);
   if(dirty||revision!==rev||saving)return;
   const history=data.history;data=d;sha=latest.sha;clearUndo();mergeHistory(history);evaluate(true);store();render();
   syncSignal(true);info('GitHub: načteny změny z druhého zařízení.');
- }catch(e){syncSignal(false);info('Synchronizace: '+e.message,true)}finally{polling=false}
+ }catch(e){syncBadge('Synchronizace: '+e.message,'error');info('Synchronizace: '+e.message,true)}finally{polling=false}
 }
 function download(name,s){let blob=new Blob([s],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
 const historyCSV=()=>['datum;rok;tyden;den;1. cislo 1. tah;2. cislo 1. tah;3. cislo 1. tah;4. cislo 1. tah;5. cislo 1. tah;6. cislo 1. tah;dodatkove cislo 1. tah;1. cislo 2. tah;2. cislo 2. tah;3. cislo 2. tah;4. cislo 2. tah;5. cislo 2. tah;6. cislo 2. tah;dodatkove cislo 2. tah',...data.history.slice().reverse().map(h=>[h.date.split('-').reverse().join('.'),h.date.slice(0,4),'','',...h.draws[0].numbers,h.draws[0].bonus,...h.draws[1].numbers,h.draws[1].bonus].join(';'))].join('\r\n')+'\r\n';
@@ -173,7 +182,7 @@ act('undo',()=>travel(undoStack,redoStack,'Vrácena poslední změna.'));act('re
 act('connect',async()=>{cfg={owner:$('owner').value.trim(),repo:$('repo').value.trim(),token:$('token').value.trim()};if(!config())throw Error('Vyplň GitHub uživatele, repozitář a token.');localStorage.setItem(CFG,JSON.stringify(cfg));sessionStorage.removeItem(CFG);sha=null;conflict=false;if(dirty){info('Přístup nastaven. Místní změny nejsou synchronizované – nejprve exportuj zálohu JSON.');return}let ok=await pull();info(ok?'Společná data načtena.':'Přístup nastaven. Společný JSON zatím neexistuje.')});
 act('pull',async()=>{if(!confirm(dirty?'Máš nesynchronizované změny. Doporučujeme nejprve Záloha JSON. Opravdu načíst společnou verzi?':'Načíst společnou databázi z GitHubu?'))return;let ok=await pull(true);if(!ok)throw Error('sportka-data.json neexistuje.');info('Společná data načtena.')});
 act('push',async()=>{if(sha===null){let latest=await remote();if(latest)throw Error('Společná data už existují. Nejprve načti společnou verzi.')}await push();info('Společná data uložena na GitHub.')});
-act('disconnect',()=>{cfg={};sha=null;localStorage.removeItem(CFG);sessionStorage.removeItem(CFG);$('token').value='';info('GitHub přístup odpojen.')});
+act('disconnect',()=>{cfg={};sha=null;localStorage.removeItem(CFG);sessionStorage.removeItem(CFG);$('token').value='';syncBadge('Nepřipojeno','error');info('GitHub přístup odpojen.')});
 act('exportHistory',()=>download('sportka.csv',historyCSV()));act('exportBets',()=>download('vsazene_kombinace.csv',betsCSV()));act('exportPred',()=>download('sportka_predikce.csv',data.predictions.map(a=>a.join(',')).join('\r\n')+'\r\n'));act('backup',()=>download('sportka-zaloha.json',JSON.stringify(data,null,2)));
 $('importHistory').onchange=async e=>{try{let f=e.target.files[0];if(!f)return;let rows=parseHistory(await f.text());if(confirm(`Nahradit historii (${rows.length} losování)?`)){checkpoint();data.history=rows;persist();render()}}catch(err){info(err.message,true)}};
 $('importBets').onchange=async e=>{try{let f=e.target.files[0];if(!f)return;let rows=parseBets(await f.text());if(confirm(`Nahradit sázky (${rows.length})?`)){checkpoint();data.bets=rows;persist();render()}}catch(err){info(err.message,true)}};
@@ -193,7 +202,7 @@ if(typeof flatpickr==='function'){
 }else{
  $('date').type='date';$('date').readOnly=false;
 }
-seed();evaluate(true);render();(async()=>{try{await refresh()}catch(e){info(e.message,true)}if(config()&&!dirty){try{await pull();await refresh()}catch(e){info(e.message,true)}}if(!data.predictions.length&&data.history.length){try{generate(true)}catch(e){info('Automatické generování: '+e.message,true)}}})();
+syncBadge(!config()?'Nepřipojeno':dirty?'Místní změny čekají na odeslání':'Připojeno – ověřuji synchronizaci',!config()?'error':'info');seed();evaluate(true);render();(async()=>{try{await refresh()}catch(e){info(e.message,true)}if(config()&&!dirty){try{await pull();await refresh()}catch(e){info(e.message,true)}}if(!data.predictions.length&&data.history.length){try{generate(true)}catch(e){info('Automatické generování: '+e.message,true)}}})();
 setInterval(()=>{if(config()&&navigator.onLine){if(dirty&&!conflict)autosave().catch(e=>info(e.message,true));else if(!dirty)periodicSync()}},SYNC_MS);
 window.addEventListener('online',()=>periodicSync());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)periodicSync()});
