@@ -641,12 +641,7 @@ window.addEventListener('sportka-local-change',()=>{state='dirty';display()});
 window.addEventListener('sportka-github-sync',e=>{state=e.detail&&e.detail.ok?'synced':'error';display()});
 window.addEventListener('storage',display);
 ['connect','pull','push','disconnect'].forEach(id=>document.getElementById(id)?.addEventListener('click',()=>setTimeout(display,0)));
-// Původní informační toasty nesmějí zakrývat kombinace při změně čísla či synchronizaci.
-const toast=document.getElementById('sportkaToast');
-if(toast)new MutationObserver(()=>{
- const message=(toast.textContent||'').trim();
- if(/místní změny|data synchronizována|GitHub: data synchronizována/i.test(message))toast.classList.remove('visible');
-}).observe(toast,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['class']});
+// Stavové hlášky se zobrazují pouze ve spodním indikátoru; bez pozorování DOM.
 if(localStorage.getItem(DIRTY)==='1')state='dirty';
 display();
 })();</script><script>

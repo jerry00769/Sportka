@@ -8,7 +8,7 @@ let cfg;try{cfg=JSON.parse(localStorage.getItem(CFG)||sessionStorage.getItem(CFG
 let toastTimer;const info=(s,bad=false)=>{const status=$('status');status.textContent=s;status.style.color=bad?'#ff8888':'#ffd27b';const el=$('sportkaToast');if(!el)return;let type=/(?:už|již) obsahuje 6 čísel|chybí \d+ (?:číslo|čísla|čísel)|pro uložení musí mít každá kombinace/i.test(s)?'warning':bad?'error':/žádné|není co|nejsou nové|vyber|upozornění/i.test(s)?'warning':/vygenerováno|generování/i.test(s)?'info':/vyhodnoceno|uložena|uloženo|synchronizována|načteny|provedena|vrácena/i.test(s)?'success':'info';el.textContent=s;el.className='sportka-toast '+type+' visible';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('visible'),bad?4500:3000)};
 const syncSignal=(ok)=>window.dispatchEvent(new CustomEvent('sportka-github-sync',{detail:{ok}}));
 const store=()=>localStorage.setItem(KEY,JSON.stringify(data));const config=()=>cfg.owner&&cfg.repo&&cfg.token;
-const persist=()=>{revision++;dirty=true;conflict=false;localStorage.setItem(DIRTY,'1');store();if(config()){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>info(e.message,true)),1500)}};
+const persist=()=>{revision++;dirty=true;conflict=false;localStorage.setItem(DIRTY,'1');store();window.dispatchEvent(new Event('sportka-local-change'));if(config()){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>info(e.message,true)),1500)}};
 // Historie uživatelských změn v rámci aktuálního otevření aplikace.
 const undoStack=[],redoStack=[],LIMIT=40;
 const snapshot=()=>JSON.stringify(data);
@@ -123,7 +123,7 @@ async function saveToGitHub(){
  sha=j.content.sha;
  if(revision===rev){dirty=false;conflict=false;localStorage.removeItem(DIRTY)}
  else {dirty=true;localStorage.setItem(DIRTY,'1');setTimeout(()=>autosave().catch(e=>info(e.message,true)),1500)}
- syncSignal(true);info('GitHub: data synchronizována.');
+ syncSignal(true);
 }
 async function autosave(){
  if(!config()||saving||!dirty||conflict||!navigator.onLine)return;
