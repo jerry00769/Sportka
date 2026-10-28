@@ -616,47 +616,39 @@ window.addEventListener('resize',()=>{if(!mobile())closeActions()});document.add
  document.getElementById('sportkaZoomOut').addEventListener('click',()=>{size=Math.max(18,size-2);set()});
  document.getElementById('sportkaZoomIn').addEventListener('click',()=>{size=Math.min(35,size+2);set()});
 })();</script><script>(function(){
-const badge=document.getElementById('githubIndicator'),status=document.getElementById('status');
-const cfgKey='sportka_github_config';
-let lastSuccess=false;
-let transient=null, transientTimer=null;
-function announce(message,kind,duration=2600){
- clearTimeout(transientTimer);transient={message,kind};update();
- transientTimer=setTimeout(()=>{transient=null;update()},duration);
+// Stejný stavový indikátor jako v Eurojackpotu: žádné dočasné středové okno.
+const badge=document.getElementById('githubIndicator');
+if(!badge)return;
+const CFG='sportka_github_config', DIRTY='sportka_dirty_v1';
+let state='checking';
+function connected(){try{const c=JSON.parse(localStorage.getItem(CFG)||sessionStorage.getItem(CFG)||'{}');return !!(c.owner&&c.repo&&c.token)}catch{return false}}
+function display(){
+ const online=connected(),dirty=localStorage.getItem(DIRTY)==='1';
+ let kind='info',msg='↻ připojeno – ověřuji synchronizaci';
+ if(!online){kind='error';msg='⚠ nepřipojeno'}
+ else if(state==='error'){kind='error';msg='⚠ chyba synchronizace'}
+ else if(dirty||state==='dirty'){kind='info';msg='↻ místní změny čekají na odeslání'}
+ else if(state==='synced'){kind='ok';msg='✓ data synchronizována'}
+ badge.textContent=msg;
+ badge.style.color=kind==='error'?'#ffbf69':kind==='ok'?'#9be3a5':'#8bb7f0';
+ badge.classList.toggle('synced',kind==='ok');
+ badge.classList.toggle('error',kind==='error');
+ badge.classList.toggle('local-change',kind==='info'&&(dirty||state==='dirty'));
+ badge.classList.remove('sync-success');
+ badge.title='GitHub: '+msg+' · Kliknutím otevřít nastavení';
 }
-function update(){let cfg={};try{cfg=JSON.parse(localStorage.getItem(cfgKey)||sessionStorage.getItem(cfgKey)||'{}')}catch{};
- const configured=!!(cfg.owner&&cfg.repo&&cfg.token);
- const message=(status.textContent||'').trim();
- if(/odpojen|neexistuje|chyba|konflikt|selhal|nelze|nepodař|synchronizace:/.test(message.toLowerCase()))lastSuccess=false;
- // Úspěch určuje skutečné dokončení GitHub operace, ne text oznámení.
- badge.classList.toggle('synced',!transient&&configured&&lastSuccess);
- badge.classList.toggle('local-change',!!transient&&transient.kind==='info');
- badge.classList.toggle('sync-success',!!transient&&transient.kind==='success');
- badge.classList.toggle('error',configured&&/chyba|konflikt|synchronizace:/i.test(message));
- badge.textContent=transient?transient.message:(!configured?'⚠ Nepřipojeno':lastSuccess?'✓ GitHub: data synchronizována':'◷ GitHub: připojeno – ověřuji synchronizaci…');
-}
-window.addEventListener('sportka-github-sync',e=>{lastSuccess=!!(e.detail&&e.detail.ok);if(lastSuccess)announce('✓ Data synchronizována','success');else update()});
-new MutationObserver(update).observe(status,{childList:true,characterData:true,subtree:true});
-['connect','pull','push','disconnect'].forEach(id=>document.getElementById(id)?.addEventListener('click',()=>setTimeout(update,0)));
-// Ruční označení čísla: modrá informace v levém dolním indikátoru.
- document.addEventListener('click',e=>{
-   const ball=e.target.closest('.ticket .ball');if(!ball)return;
-   const selected=ball.classList.contains('on');
-   setTimeout(()=>{if(ball.isConnected&&ball.classList.contains('on')!==selected)announce('● Místní změny – čeká se na synchronizaci','info')},90);
- },true);
- // Oznámení o těchto dvou stavech nepatří do středového toastu.
- const toast=document.getElementById('sportkaToast');
- if(toast){
-  const obs=new MutationObserver(()=>{
-   const message=(toast.textContent||'').trim();
-   if(/místní změny|data synchronizována/i.test(message)){
-    if(toast.classList.contains('visible'))toast.classList.remove('visible');
-    if(/místní změny/i.test(message))announce('● Místní změny – čeká se na synchronizaci','info');
-   }
-  });
-  obs.observe(toast,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['class']});
- }
- window.addEventListener('storage',update);update();
+window.addEventListener('sportka-local-change',()=>{state='dirty';display()});
+window.addEventListener('sportka-github-sync',e=>{state=e.detail&&e.detail.ok?'synced':'error';display()});
+window.addEventListener('storage',display);
+['connect','pull','push','disconnect'].forEach(id=>document.getElementById(id)?.addEventListener('click',()=>setTimeout(display,0)));
+// Původní informační toasty nesmějí zakrývat kombinace při změně čísla či synchronizaci.
+const toast=document.getElementById('sportkaToast');
+if(toast)new MutationObserver(()=>{
+ const message=(toast.textContent||'').trim();
+ if(/místní změny|data synchronizována|GitHub: data synchronizována/i.test(message))toast.classList.remove('visible');
+}).observe(toast,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['class']});
+if(localStorage.getItem(DIRTY)==='1')state='dirty';
+display();
 })();</script><script>
 /* Generovani = modra informace, nikoliv zelene potvrzeni ulozeni. */
 (function(){
