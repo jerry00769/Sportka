@@ -5,7 +5,7 @@ const initial=()=>({history:[],bets:[],predictions:[],version:1});let data;try{d
 const limitPredictions=d=>{if(Array.isArray(d?.predictions)&&d.predictions.length>6)d.predictions=d.predictions.slice(0,6);return d};
 limitPredictions(data);
 let cfg;try{cfg=JSON.parse(localStorage.getItem(CFG)||sessionStorage.getItem(CFG)||'{}')||{}}catch{cfg={}}if(cfg.owner&&cfg.repo&&cfg.token){localStorage.setItem(CFG,JSON.stringify(cfg));sessionStorage.removeItem(CFG)}let sha=null,dirty=localStorage.getItem(DIRTY)==='1',saving=false,timer,revision=0,conflict=false,polling=false;const SYNC_MS=15000;
-let toastTimer;const info=(s,bad=false)=>{const status=$('status');status.textContent=s;status.style.color=bad?'#ff8888':'#ffd27b';const el=$('sportkaToast');if(!el)return;let type=bad?'error':/žádné|není co|nejsou nové|vyber|upozornění/i.test(s)?'warning':/vygenerováno|vyhodnoceno|uložena|synchronizována|načteny|provedena|vrácena/i.test(s)?'success':'info';el.textContent=s;el.className='sportka-toast '+type+' visible';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('visible'),bad?4500:3000)};
+let toastTimer;const info=(s,bad=false)=>{const status=$('status');status.textContent=s;status.style.color=bad?'#ff8888':'#ffd27b';const el=$('sportkaToast');if(!el)return;let type=/(?:už|již) obsahuje 6 čísel|chybí \d+ (?:číslo|čísla|čísel)|pro uložení musí mít každá kombinace/i.test(s)?'warning':bad?'error':/žádné|není co|nejsou nové|vyber|upozornění/i.test(s)?'warning':/vygenerováno|generování/i.test(s)?'info':/vyhodnoceno|uložena|uloženo|synchronizována|načteny|provedena|vrácena/i.test(s)?'success':'info';el.textContent=s;el.className='sportka-toast '+type+' visible';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('visible'),bad?4500:3000)};
 const syncSignal=(ok)=>window.dispatchEvent(new CustomEvent('sportka-github-sync',{detail:{ok}}));
 const store=()=>localStorage.setItem(KEY,JSON.stringify(data));const config=()=>cfg.owner&&cfg.repo&&cfg.token;
 const persist=()=>{revision++;dirty=true;conflict=false;localStorage.setItem(DIRTY,'1');store();if(config()){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>info(e.message,true)),1500)}};
@@ -50,7 +50,7 @@ function render(){let pred=$('predictions');pred.replaceChildren();data.predicti
   const toggle=()=>{
    const pos=a.indexOf(n);
    if(pos>=0){a.splice(pos,1)}else if(a.length<6){a.push(n);a.sort((x,y)=>x-y)}
-   else{info(`Kombinace ${i+1} už obsahuje 6 čísel. Nejprve některé odznač.`,true);return}
+   else{info(`Kombinace ${i+1} již obsahuje 6 čísel. Nejprve jedno odznač.`);return}
    ball.classList.toggle('on',a.includes(n));ball.setAttribute('aria-pressed',String(a.includes(n)));
    updatePredictionCount(card,a,i);persist();updateAttention();
   };

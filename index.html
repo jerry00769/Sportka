@@ -460,6 +460,59 @@ h1{font-size:27px!important;margin:7px 0 14px!important}
   .history {width:100%!important;}
   .history table,.history tbody,.history tbody tr {width:100%!important;}
 }
+
+/* Jednotna barevna semantika hlaseni ve vsech trech loteriich. */
+.toast-message.info,.sportka-toast.info {background:#2196f3!important;color:#fff!important}
+.toast-message.success,.sportka-toast.success {background:#4caf50!important;color:#15283d!important}
+.toast-message.warning,.sportka-toast.warning {background:#ffed4a!important;color:#15283d!important}
+.toast-message.error,.sportka-toast.error {background:#d32f2f!important;color:#fff!important}
+
+
+/* 2026-10-28: jediny zdroj sirek predikci a historie; bez natahovani karet. */
+:root{--lot-gap:5px;--lot-pad:18px;--lot-ball:25px;--lot-step:4px;--lot-cols:3;--lot-card:max(306px, calc(7 * var(--lot-ball) + 6 * var(--lot-step) + 2 * var(--lot-pad) + 2px));--lot-total:calc(var(--lot-cols) * var(--lot-card) + (var(--lot-cols) - 1) * var(--lot-gap))}
+@media (min-width:1021px){:root{--lot-ball:var(--sportka-ball-size,25px)}}
+@media (min-width:701px) and (max-width:1020px){:root{--lot-cols:2}}
+@media (max-width:700px){:root{--lot-cols:1;--lot-step:3px}}
+#predictions.cards{box-sizing:border-box!important;display:grid!important;grid-template-columns:repeat(var(--lot-cols),minmax(0,var(--lot-card)))!important;gap:var(--lot-gap)!important;width:min(100%,var(--lot-total))!important;max-width:100%!important;margin-inline:auto!important;justify-content:center!important}
+#predictions .ticket{box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:100%!important;padding:13px var(--lot-pad) 16px!important}
+#predictions .balls{grid-template-columns:repeat(7,var(--lot-ball))!important;gap:var(--lot-step)!important;width:max-content!important;max-width:100%!important;margin-inline:auto!important;justify-content:center!important}
+#predictions .ball{width:var(--lot-ball)!important;height:var(--lot-ball)!important;aspect-ratio:1!important}
+main{width:min(100%,var(--lot-total))!important;max-width:var(--lot-total)!important;margin-inline:auto!important;box-sizing:border-box!important}
+main>section.panel{box-sizing:border-box!important;width:100%!important;max-width:100%!important}
+main>section.panel:has(#predictions),main>section.panel:has(.history){padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
+.history-heading,.history{box-sizing:border-box!important;width:100%!important;max-width:100%!important}
+@media(max-width:700px){main{max-width:var(--lot-card)!important}.history-heading{align-items:center!important}}
+
+
+/* Stejný nadpis a tlačítka jako ostatní loterie, pouze PC/tablet. */
+@media (min-width:701px) {
+  main>h1 {font-size:28px!important;line-height:1.2!important;letter-spacing:1px!important;margin:0 0 8px!important;}
+  .bar .action-buttons button {box-sizing:border-box!important;height:44px!important;min-height:44px!important;padding:10px 13px!important;font-size:12px!important;line-height:1.2!important;white-space:nowrap!important;}
+  .bar .date-menu-row input {box-sizing:border-box!important;width:125px!important;height:32px!important;font-size:12px!important;}
+}
+
+
+/* Sportka: centrovani cisel v historii na PC a tabletu; tablet bez vodorovneho posuvniku. */
+@media (min-width:701px) {
+  .history tbody td:nth-child(2){text-align:center!important;min-width:0!important}
+  .history tbody td:nth-child(2) .chips{justify-content:center!important;flex-wrap:nowrap!important}
+}
+@media (min-width:701px) and (max-width:1020px) {
+  .history{overflow-x:hidden!important;overflow-y:auto!important}
+  .history table{width:100%!important;min-width:0!important;table-layout:fixed!important}
+  .history th,.history td{box-sizing:border-box!important;min-width:0!important;padding-left:3px!important;padding-right:3px!important;overflow:hidden!important;text-overflow:clip!important}
+  .history th:nth-child(1){width:15%!important}
+  .history th:nth-child(2){width:29%!important}
+  .history th:nth-child(3){width:16%!important}
+  .history th:nth-child(4){width:14%!important}
+  .history th:nth-child(5){width:14%!important}
+  .history th:nth-child(6){width:12%!important}
+  .history .chips{gap:3px!important}
+  .history .chip{width:20px!important;height:20px!important;flex:0 0 20px!important;font-size:10px!important}
+  .history .delete-link{font-size:11px!important;padding:1px!important}
+  .history thead th{font-size:10px!important;white-space:normal!important}
+}
+
 </style><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"><script src="https://cdn.jsdelivr.net/npm/flatpickr"></script><script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/cs.js"></script></head><body><main><h1>Sportka</h1><div class="bar"><div class="date-menu-row"><button type="button" id="menuToggle" aria-label="Zobrazit akce" aria-expanded="false"><span class="hamburger-icon">☰</span> <span>Menu</span></button><label>Datum sázky: <input id="date" type="text" placeholder="Vyber datum losování" readonly></label></div><div class="action-buttons" id="sportkaActions"><button class="green" id="generate">Generovat nová čísla</button><button id="save" disabled>Uložit všech 6 sázek</button><button class="red" id="evaluate">Vyhodnotit výsledky</button></div></div><p id="status" class="notice" role="status"></p><details class="panel sportka-side" id="sportkaSettings"><summary class="side-tab" aria-label="Otevřít nastavení">⚙ Nastavení · GitHub · import / export</summary><div class="side-inner"><h2>Sportka – synchronizace a data</h2><div class="settings"><input id="owner" placeholder="GitHub uživatel"><input id="repo" placeholder="Repozitář"><input id="token" type="password" placeholder="GitHub token"><button id="connect">Nastavit přístup</button><button id="pull">Načíst společnou</button><button class="green" id="push">Uložit společnou</button><button class="red" id="disconnect">Odpojit klíč</button></div><div class="settings"><label>Import historie <input type="file" id="importHistory" accept=".csv"></label><label>Import sázek <input type="file" id="importBets" accept=".csv"></label><button id="exportHistory">Export historie CSV</button><button id="exportBets">Export sázek CSV</button><button id="exportPred">Export predikcí CSV</button><button id="backup">Záloha JSON</button><label>Obnovit JSON <input type="file" id="restore" accept=".json"></label></div><p class="small">GitHub token se uchovává v localStorage tohoto prohlížeče až do odpojení klíče. Na sdíleném zařízení klíč neukládejte. Společná data: sportka-data.json. Záloha: sportka-zaloha.json. Při konfliktech se data nepřepisují automaticky.</p></div></details><section class="panel prediction-panel"><div class="prediction-title-row"><h2>Predikce (6 sloupců: 6 z 49)</h2><div class="sportka-zoom"><button type="button" id="sportkaZoomOut" title="Zmenšit kombinace">−</button><button type="button" id="sportkaZoomIn" title="Zvětšit kombinace">+</button></div></div><div class="cards" id="predictions"><p class="small">Připravuji šest kombinací…</p></div></section><section class="panel"><div id="githubIndicator" class="github-indicator" role="status">⚠ Nepřipojeno</div><div class="history-heading"><h2>Historie vsazených sázek</h2><div class="undo-actions"><button id="undo" disabled title="Vrátit poslední změnu">↶ Zpět</button><button id="redo" disabled title="Znovu provést změnu">Vpřed ↷</button></div></div><div class="history"><table><thead><tr><th>Datum</th><th>KOMBINACE</th><th>Výsledek</th><th>Shoda 1. tah</th><th>Shoda 2. tah</th><th></th></tr></thead><tbody id="bets"></tbody></table></div></section></main><div id="sportkaToast" class="sportka-toast" role="status" aria-live="polite"></div><script src="initial-data.js"></script><script src="web-core.js"></script><script>(function(){
 const b=document.getElementById('menuToggle'), actions=document.getElementById('sportkaActions'),p=document.getElementById('sportkaSettings');
 const mobile=()=>window.matchMedia('(max-width:700px)').matches;
@@ -490,4 +543,23 @@ window.addEventListener('sportka-github-sync',e=>{lastSuccess=!!e.detail.ok;upda
 new MutationObserver(update).observe(status,{childList:true,characterData:true,subtree:true});
 ['connect','pull','push','disconnect'].forEach(id=>document.getElementById(id)?.addEventListener('click',()=>setTimeout(update,0)));
 window.addEventListener('storage',update);update();
-})();</script></body></html>
+})();</script><script>
+/* Generovani = modra informace, nikoliv zelene potvrzeni ulozeni. */
+(function(){
+  const toast=document.getElementById('sportkaToast');
+  if(!toast)return;
+  const observer=new MutationObserver(()=>{
+    if(!toast.classList.contains('visible'))return;
+    if(/vygenerov|generov[aá]n|nov[aá] [čc][ií]sla|predikc[eí] (?:byly )?(?:vytvoř|vygenerov)/i.test(toast.textContent||'')){
+      if(!toast.classList.contains('info')){
+        observer.disconnect();
+        toast.classList.remove('success','warning');
+        toast.classList.add('info');
+        observer.observe(toast,{attributes:true,attributeFilter:['class'],childList:true,characterData:true,subtree:true});
+      }
+    }
+  });
+  observer.observe(toast,{attributes:true,attributeFilter:['class'],childList:true,characterData:true,subtree:true});
+})();
+</script>
+</body></html>
