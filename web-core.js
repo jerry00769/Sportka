@@ -1,10 +1,18 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id), KEY='sportka_web_v1', DIRTY='sportka_dirty_v1', CFG='sportka_github_config', REMOTE='sportka-data.json';
-const initial=()=>({history:[],bets:[],predictions:[],version:1});let data;try{data=JSON.parse(localStorage.getItem(KEY))||initial()}catch{data=initial()}
+const initial=()=>({history:[],bets:[],predictions:[],deletedBets:{},predictionsUpdatedAt:0,version:2});let data;try{data=JSON.parse(localStorage.getItem(KEY))||initial()}catch{data=initial()}
 // Kompatibilita se starsimi zalohami: pouze omezeni poctu predikci, bez zmeny sazkovych a losovacich dat.
 const limitPredictions=d=>{if(Array.isArray(d?.predictions)&&d.predictions.length>6)d.predictions=d.predictions.slice(0,6);return d};
 limitPredictions(data);
-let cfg;try{cfg=JSON.parse(localStorage.getItem(CFG)||sessionStorage.getItem(CFG)||'{}')||{}}catch{cfg={}}if(cfg.owner&&cfg.repo&&cfg.token){localStorage.setItem(CFG,JSON.stringify(cfg));sessionStorage.removeItem(CFG)}let sha=null,dirty=localStorage.getItem(DIRTY)==='1',saving=false,timer,revision=0,conflict=false,polling=false;const SYNC_MS=15000;
+const REMEMBER='sportka_gh_token_remembered';
+let cfg;try{cfg=JSON.parse(sessionStorage.getItem(CFG)||localStorage.getItem(CFG)||'{}')||{}}catch{cfg={}}
+// Migrate legacy saved token into the current browser session; persistent storage requires opt-in.
+const legacyToken=cfg.token||'';
+cfg={owner:cfg.owner||'',repo:cfg.repo||'',token:sessionStorage.getItem('sportka_gh_token')||localStorage.getItem(REMEMBER)||legacyToken};
+if(legacyToken&&!localStorage.getItem(REMEMBER))sessionStorage.setItem('sportka_gh_token',legacyToken);
+localStorage.removeItem(CFG);sessionStorage.removeItem(CFG);
+let sha=null,dirty=localStorage.getItem(DIRTY)==='1',saving=false,timer,revision=0,conflict=false,polling=false;const SYNC_MS=15000;
+
 let toastTimer;const info=(s,bad=false)=>{const status=$('status');status.textContent=s;status.style.color=bad?'#ff8888':'#ffd27b';if(/^(?:GitHub:|Synchronizace:)/i.test(s)){syncStatus(s.replace(/^GitHub:\s*/i,''),bad?'error':'ok');return;}const el=$('sportkaToast');if(!el)return;let type=/(?:už|již) obsahuje 6 čísel|chybí \d+ (?:číslo|čísla|čísel)|pro uložení musí mít každá kombinace/i.test(s)?'warning':bad?'error':/žádné|není co|nejsou nové|vyber|upozornění/i.test(s)?'warning':/vygenerováno|generování/i.test(s)?'info':/vyhodnoceno|uložena|uloženo|synchronizována|načteny|provedena|vrácena/i.test(s)?'success':'info';el.textContent=s;el.className='sportka-toast '+type+' visible';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('visible'),bad?4500:3000)};
 // Jediny stavovy indikator synchronizace: vlevo dole, bez stredoveho toastu.
 let syncState='init';
@@ -20,14 +28,32 @@ function syncStatus(message,kind='info'){
 }
 const syncSignal=ok=>{syncState=ok?'ok':'error';syncStatus(ok?'data synchronizována':'chyba synchronizace',ok?'ok':'error')};
 const store=()=>localStorage.setItem(KEY,JSON.stringify(data));const config=()=>cfg.owner&&cfg.repo&&cfg.token;
-const persist=()=>{revision++;dirty=true;conflict=false;localStorage.setItem(DIRTY,'1');store();syncState='dirty';syncStatus(config()?'místní změny čekají na odeslání':'místní změny, GitHub nepřipojen',config()?'info':'error');if(config()){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>{syncStatus(e.message,'error')}),1500)}};
+const persist=()=>{revision++;dirty=true;conflict=false;localStorage.setItem(DIRTY,'1');store();syncState='dirty';syncStatus(config()?'místní změny čekají na odeslání':'Změny jsou jen v tomto zařízení. Pro odeslání nastav klíč.',config()?'info':'error');if(config()){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>syncStatus(e.message,'error')),350)}};
+const betKey=b=>String(b.date)+'|'+(valid(b.numbers)||b.numbers||[]).join(',');
+function markDeleted(rows){const now=Date.now();data.deletedBets={...(data.deletedBets||{})};for(const b of rows){const k=betKey(b);data.deletedBets[k]=Math.max(Number(data.deletedBets[k])||0,now)}}
+function restoreBets(rows){const stamps={...(data.deletedBets||{})};const now=Date.now();data.bets=rows.map((b,i)=>({...b,_savedAt:now+1000+i}));for(const b of data.bets)delete stamps[betKey(b)];data.deletedBets=stamps}
+function mergeShared(remoteData,localData){
+ validate(remoteData);validate(localData);
+ const deletedBets={...(remoteData.deletedBets||{})};
+ for(const [k,v] of Object.entries(localData.deletedBets||{}))deletedBets[k]=Math.max(Number(deletedBets[k])||0,Number(v)||0);
+ const bets=new Map();
+ for(const b of remoteData.bets)bets.set(betKey(b),b);
+ for(const b of localData.bets){const k=betKey(b),old=bets.get(k);if(!old||Number(b._savedAt||0)>=Number(old._savedAt||0))bets.set(k,b)}
+ for(const [k,b] of bets)if((Number(deletedBets[k])||0)>=Number(b._savedAt||0))bets.delete(k);
+ const history=new Map(remoteData.history.map(h=>[h.date,h]));for(const h of localData.history)history.set(h.date,h);
+ const rt=Number(remoteData.predictionsUpdatedAt)||0,lt=Number(localData.predictionsUpdatedAt)||0;
+ const localWins=lt>rt;
+ return {...remoteData,...localData,deletedBets,bets:[...bets.values()],history:[...history.values()].sort((a,b)=>a.date.localeCompare(b.date)),predictions:localWins?localData.predictions:remoteData.predictions,predictionsUpdatedAt:localWins?lt:rt};
+}
+function applyShared(next){data=limitPredictions(next);evaluate(true);store();render()}
+
 // Historie uživatelských změn v rámci aktuálního otevření aplikace.
 const undoStack=[],redoStack=[],LIMIT=40;
 const snapshot=()=>JSON.stringify(data);
 function updateUndoButtons(){ $('undo').disabled=!undoStack.length; $('redo').disabled=!redoStack.length }
 function checkpoint(){undoStack.push(snapshot());if(undoStack.length>LIMIT)undoStack.shift();redoStack.length=0;updateUndoButtons()}
 function clearUndo(){undoStack.length=0;redoStack.length=0;updateUndoButtons()}
-function travel(from,to,label){if(!from.length)return;to.push(snapshot());data=limitPredictions(JSON.parse(from.pop()));persist();render();updateUndoButtons();info(label)}
+function travel(from,to,label){if(!from.length)return;to.push(snapshot());data=limitPredictions(JSON.parse(from.pop()));data.predictionsUpdatedAt=Date.now();persist();render();updateUndoButtons();info(label)}
 const date=s=>{s=String(s||'').trim();let m=s.match(/^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})$/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:s.slice(0,10)};
 const valid=a=>{let n=(Array.isArray(a)?a:String(a||'').split(',')).map(Number);return n.length===6&&new Set(n).size===6&&n.every(x=>Number.isInteger(x)&&x>=1&&x<=49)?n.sort((a,b)=>a-b):null};
 const key=a=>valid(a)?.join(',');const parseCSV=s=>s.replace(/^\uFEFF/,'').trim().split(/\r?\n/).map(r=>r.split(';'));
@@ -43,7 +69,7 @@ function stats(){let freq=new Map(),pairs=new Map(),triples=new Map(),learn=new 
 function structure(a){let low=a.filter(n=>n<=25).length,even=a.filter(n=>n%2===0).length,span=(a[5]-a[0])/48,buckets=new Set(a.map(n=>Math.floor((n-1)/10))).size/5,spread=(1-Math.abs(low-3)/3)*.4+span*.3+buckets*.3,parity=1-Math.abs(even-3)/3,run=1,longest=1;for(let i=1;i<6;i++){run=a[i]===a[i-1]+1?run+1:1;longest=Math.max(longest,run)}return 6*spread+1.5*parity-Math.max(0,longest-2)*1.8}
 function score(a,s){let p=combinations(a,2),t=combinations(a,3);return a.reduce((v,n)=>v+(s.single.get(n)||0)*28+(s.learn.get(n)||0)/s.ls*2.5,0)+p.reduce((v,k)=>v+(s.pairs.get(k)||0)*13+(s.learnPairs.get(k)||0)/s.lps*1.5,0)+t.reduce((v,k)=>v+(s.triples.get(k)||0)*2.5,0)+structure(a)}
 function randomLine(s,uniform=false){let available=Array.from({length:49},(_,i)=>i+1),weights=available.map(n=>uniform?1:Math.pow((s.freq.get(n)||0)+1,.25)),out=[];for(let j=0;j<6;j++){let total=weights.reduce((a,b)=>a+b,0),r=Math.random()*total,i=0;for(;i<weights.length-1;i++){r-=weights[i];if(r<=0)break}out.push(available.splice(i,1)[0]);weights.splice(i,1)}return out.sort((a,b)=>a-b)}
-function generate(initialRun=false){if(!data.history.length)throw Error('Chybí historie losování.');let s=stats(),excluded=new Set(data.bets.map(b=>key(b.numbers))),seen=new Set(),candidates=[];for(let i=0;i<30000;i++){let a=randomLine(s,i%5===0),k=a.join(',');if(seen.has(k)||excluded.has(k))continue;seen.add(k);candidates.push({a,score:score(a,s)})}candidates.sort((a,b)=>b.score-a.score);candidates=candidates.slice(0,6000);let chosen=[],usage=Array(50).fill(0);for(let j=0;j<6;j++){let best=null,top=-Infinity;for(let pool of [candidates.slice(0,1400),candidates]){for(let c of pool){if(c.a.some(n=>usage[n]>=4)||chosen.some(a=>a.filter(n=>c.a.includes(n)).length>2))continue;let repeated=c.a.reduce((v,n)=>v+usage[n],0),avg=chosen.length?chosen.reduce((v,a)=>v+a.filter(n=>c.a.includes(n)).length,0)/chosen.length:0,bonus=chosen.length?Math.max(0,6-repeated)+(avg<=1?7:avg<=1.5?4:1):0,value=c.score+bonus;if(value>top){top=value;best=c}}if(best)break}if(!best)throw Error('Nelze sestavit šest sloupců bez porušení omezení.');chosen.push(best.a);best.a.forEach(n=>usage[n]++)}if(!initialRun)checkpoint();data.predictions=chosen;if(initialRun)store();else persist();render();info(`Vygenerováno 6 kombinací. Historie: ${data.history.length} losování, učení: ${s.checked} ověřených sázek.`)}
+function generate(initialRun=false){if(!data.history.length)throw Error('Chybí historie losování.');let s=stats(),excluded=new Set(data.bets.map(b=>key(b.numbers))),seen=new Set(),candidates=[];for(let i=0;i<30000;i++){let a=randomLine(s,i%5===0),k=a.join(',');if(seen.has(k)||excluded.has(k))continue;seen.add(k);candidates.push({a,score:score(a,s)})}candidates.sort((a,b)=>b.score-a.score);candidates=candidates.slice(0,6000);let chosen=[],usage=Array(50).fill(0);for(let j=0;j<6;j++){let best=null,top=-Infinity;for(let pool of [candidates.slice(0,1400),candidates]){for(let c of pool){if(c.a.some(n=>usage[n]>=4)||chosen.some(a=>a.filter(n=>c.a.includes(n)).length>2))continue;let repeated=c.a.reduce((v,n)=>v+usage[n],0),avg=chosen.length?chosen.reduce((v,a)=>v+a.filter(n=>c.a.includes(n)).length,0)/chosen.length:0,bonus=chosen.length?Math.max(0,6-repeated)+(avg<=1?7:avg<=1.5?4:1):0,value=c.score+bonus;if(value>top){top=value;best=c}}if(best)break}if(!best)throw Error('Nelze sestavit šest sloupců bez porušení omezení.');chosen.push(best.a);best.a.forEach(n=>usage[n]++)}if(!initialRun)checkpoint();data.predictions=chosen;if(initialRun)store();else{data.predictionsUpdatedAt=Date.now();persist();}render();info(`Vygenerováno 6 kombinací. Historie: ${data.history.length} losování, učení: ${s.checked} ověřených sázek.`)}
 function updatePredictionCount(card,a,i){
  const h=card.querySelector('h3');if(!h)return;
  h.replaceChildren(document.createTextNode(`Kombinace ${i+1} (`));
@@ -64,7 +90,7 @@ function render(){let pred=$('predictions');pred.replaceChildren();data.predicti
    if(pos>=0){a.splice(pos,1)}else if(a.length<6){a.push(n);a.sort((x,y)=>x-y)}
    else{info(`Kombinace ${i+1} již obsahuje 6 čísel. Nejprve jedno odznač.`);return}
    ball.classList.toggle('on',a.includes(n));ball.setAttribute('aria-pressed',String(a.includes(n)));
-   updatePredictionCount(card,a,i);persist();updateAttention();
+   updatePredictionCount(card,a,i);data.predictionsUpdatedAt=Date.now();persist();updateAttention();
   };
   ball.addEventListener('click',toggle);
   ball.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle()}});
@@ -80,7 +106,7 @@ let dayCell=document.createElement('td');dayCell.textContent=day;tr.append(dayCe
 let combo=document.createElement('td');let chips=document.createElement('div');chips.className='chips';bet.numbers.forEach(n=>{let c=document.createElement('span');c.className='chip';c.textContent=n;chips.append(c)});combo.append(chips);tr.append(combo);
 let result=document.createElement('td');result.textContent=bet.result||'Nevyhodnoceno';if(String(bet.result).toLowerCase().includes('výhra')||String(bet.result).toLowerCase()==='vyhra'){result.className='winning';if(Number(bet.amount)>0)result.textContent+=' · '+bet.amount+' Kč'}tr.append(result);
 for(let value of [bet.hits1||'–',bet.hits2||'–']){let td=document.createElement('td');td.textContent=value;tr.append(td)}
-let action=document.createElement('td');if(i===0){let del=document.createElement('button');del.className='delete-link';del.textContent='× Smazat';del.title='Smazat celou sadu';del.onclick=()=>{if(!confirm(`Smazat celou sadu ${groupIndex} z ${day} (${group.length} sloupců)?`))return;checkpoint();let removed=new Set(group);data.bets=data.bets.filter(x=>!removed.has(x));persist();render()};action.append(del)}tr.append(action);tbody.append(tr);
+let action=document.createElement('td');if(i===0){let del=document.createElement('button');del.className='delete-link';del.textContent='× Smazat';del.title='Smazat celou sadu';del.onclick=()=>{if(!confirm(`Smazat celou sadu ${groupIndex} z ${day} (${group.length} sloupců)?`))return;checkpoint();let removed=new Set(group);markDeleted(group);data.bets=data.bets.filter(x=>!removed.has(x));persist();render()};action.append(del)}tr.append(action);tbody.append(tr);
 }
 
 }}
@@ -98,7 +124,7 @@ updateAttention();
   evalBtn.classList.toggle('blinking-button',waiting);
  }
 const encode=s=>btoa(Array.from(new TextEncoder().encode(s),c=>String.fromCharCode(c)).join(''));const decode=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g,'')),c=>c.charCodeAt(0)));
-async function remote(method='GET',payload){if(!config())throw Error('Nejdříve nastav GitHub přístup.');let url=`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${REMOTE}`,r=await fetch(url,{method,headers:{Authorization:`Bearer ${cfg.token}`,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'},...(payload?{body:JSON.stringify(payload)}:{})}),j=await r.json();if(!r.ok){if(r.status===404&&method==='GET'){const check=await fetch(`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}`,{headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},cache:'no-store'}).catch(()=>null);if(check?.ok){const meta=await check.json();const branch=meta.default_branch||'main';const file=await fetch(`https://raw.githubusercontent.com/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/${encodeURIComponent(branch)}/${REMOTE}?t=${Date.now()}`,{cache:'no-store'}).catch(()=>null);if(file?.ok)throw Error('Soubor na veřejném GitHubu existuje, ale GitHub API jej s tímto tokenem nevidí (HTTP 404). Zkontroluj oprávnění tokenu k repozitáři Sportka; data nebyla změněna.');throw Error(`GitHub API 404: repozitář existuje, ale ${REMOTE} není dostupný na výchozí větvi ${branch}. Zkontroluj cestu a oprávnění tokenu.`)}throw Error(`GitHub API 404: repozitář ${cfg.owner}/${cfg.repo} nebo přístup k němu nebyl nalezen. Zkontroluj vlastníka, název a token.`)}if(r.status===409||r.status===422)throw Error('GitHub konflikt: nejprve zálohuj a načti společná data.');throw Error(j.message||`GitHub HTTP ${r.status}`)}// GitHub Contents API u souborů nad 1 MB vrací prázdné content (encoding: none).
+async function remote(method='GET',payload){if(!config())throw Error('Nejdříve nastav GitHub přístup.');let url=`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${REMOTE}`,r=await fetch(url,{method,headers:{Authorization:`Bearer ${cfg.token}`,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'},...(payload?{body:JSON.stringify(payload)}:{})}),j=await r.json();if(!r.ok){if(r.status===404&&method==='GET'){const check=await fetch(`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}`,{headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},cache:'no-store'}).catch(()=>null);if(check?.ok){const meta=await check.json();const branch=meta.default_branch||'main';const file=await fetch(`https://raw.githubusercontent.com/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/${encodeURIComponent(branch)}/${REMOTE}?t=${Date.now()}`,{cache:'no-store'}).catch(()=>null);if(file?.ok)throw Error('Soubor na veřejném GitHubu existuje, ale GitHub API jej s tímto tokenem nevidí (HTTP 404). Zkontroluj oprávnění tokenu k repozitáři Sportka; data nebyla změněna.');throw Error(`GitHub API 404: repozitář existuje, ale ${REMOTE} není dostupný na výchozí větvi ${branch}. Zkontroluj cestu a oprávnění tokenu.`)}throw Error(`GitHub API 404: repozitář ${cfg.owner}/${cfg.repo} nebo přístup k němu nebyl nalezen. Zkontroluj vlastníka, název a token.`)}if(r.status===409||r.status===422){const err=Error('GitHub konflikt při souběžném zápisu.');err.githubConflict=true;throw err;}throw Error(j.message||`GitHub HTTP ${r.status}`)}// GitHub Contents API u souborů nad 1 MB vrací prázdné content (encoding: none).
 // Skutečný obsah načteme přes Git Blobs API podle SHA; metadata SHA zůstávají
 // pro bezpečnou kontrolu konfliktů při následném ukládání.
 if(method==='GET'&&j&&(!j.content||j.encoding==='none')){
@@ -114,59 +140,58 @@ if(method==='GET'&&j&&(!j.content||j.encoding==='none')){
 return j}
 function validate(d){if(!d||!Array.isArray(d.history)||!Array.isArray(d.bets)||!Array.isArray(d.predictions))throw Error('Neplatný JSON společných dat');limitPredictions(d)}
 async function pull(force=false){
- if(dirty&&!force)throw Error('Místní změny nejsou synchronizované. Nejprve ulož zálohu JSON.');
  if(saving||polling)throw Error('Probíhá synchronizace. Zkus načtení znovu.');
  const rev=revision,j=await remote();if(!j)return false;
- let d;try{d=JSON.parse(decode(j.content))}catch{throw Error('Společný JSON nelze přečíst. Místní sázky zůstaly zachovány.')}
- validate(d);if(revision!==rev)throw Error('Během načítání vznikly místní změny. Společná data nebyla použita.');
- const history=data.history;data=d;clearUndo();sha=j.sha;dirty=false;conflict=false;localStorage.removeItem(DIRTY);
- mergeHistory(history);evaluate(true);store();render();syncSignal(true);return true
+ let d;try{d=JSON.parse(decode(j.content))}catch{throw Error('Společný JSON nelze přečíst; místní data zůstala zachována.')}
+ validate(d);if(revision!==rev)throw Error('Během načítání vznikly místní změny; opakuji později.');
+ const combined=mergeShared(d,data),changed=JSON.stringify(combined)!==JSON.stringify(d);
+ sha=j.sha;conflict=false;applyShared(combined);clearUndo();
+ dirty=changed;localStorage[changed?'setItem':'removeItem'](DIRTY,'1');
+ syncStatus(changed?'Sloučené změny odesílám na GitHub…':'Data synchronizována',changed?'info':'ok');
+ if(changed&&config()){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>syncStatus(e.message,'error')),100)}
+ return true;
 }
-async function push(){
- if(saving)throw Error('Právě probíhá automatické ukládání.');
- return saveToGitHub();
-}
+async function push(){if(saving)throw Error('Právě probíhá automatické ukládání.');saving=true;try{await saveToGitHub()}finally{saving=false}}
 async function saveToGitHub(){
  if(!config())throw Error('Nejdříve nastav GitHub přístup.');
- syncStatus('odesílám změny…','info');
- const latest=await remote();
- if((latest?.sha||null)!==sha){conflict=true;throw Error('GitHub konflikt: společná verze se změnila. Zálohuj místní data a načti společnou verzi.')}
- const rev=revision,content=encode(JSON.stringify(data,null,2));
- const j=await remote('PUT',{message:'Sportka AI: synchronizace dat',content,...(sha?{sha}:{})});
- sha=j.content.sha;
- if(revision===rev){dirty=false;conflict=false;localStorage.removeItem(DIRTY)}
- else {dirty=true;localStorage.setItem(DIRTY,'1');setTimeout(()=>autosave().catch(e=>info(e.message,true)),1500)}
- if(!dirty)syncSignal(true);
+ syncStatus('Odesílám změny na GitHub…','info');
+ const startRevision=revision;
+ for(let attempt=0;attempt<3;attempt++){
+  const latest=await remote();let d=initial();
+  if(latest){try{d=JSON.parse(decode(latest.content));validate(d)}catch{throw Error('Společný JSON nelze přečíst; zápis zastaven.')}}
+  const combined=mergeShared(d,data);
+  if(latest&&JSON.stringify(combined)===JSON.stringify(d)){
+   sha=latest.sha;applyShared(combined);
+   if(revision===startRevision){dirty=false;localStorage.removeItem(DIRTY)}
+   syncStatus(dirty?'Nové změny čekají na odeslání':'Data synchronizována',dirty?'info':'ok');return;
+  }
+  try{
+   const j=await remote('PUT',{message:'Sportka AI: synchronizace dat',content:encode(JSON.stringify(combined,null,2)),...(latest?{sha:latest.sha}:{})});
+   sha=j.content.sha;applyShared(mergeShared(combined,data));conflict=false;
+   if(revision===startRevision){dirty=false;localStorage.removeItem(DIRTY);syncStatus('Data synchronizována · GitHub potvrdil zápis','ok')}
+   else{dirty=true;localStorage.setItem(DIRTY,'1');clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>syncStatus(e.message,'error')),350)}
+   return;
+  }catch(e){if(!e.githubConflict||attempt===2)throw e}
+ }
 }
 async function autosave(){
- if(!config()||saving||!dirty||conflict||!navigator.onLine)return;
- saving=true;
- try{
-  if(sha===null){
-   const latest=await remote();
-   if(latest){let d;try{d=JSON.parse(decode(latest.content))}catch{throw Error('Společný JSON nelze přečíst; automatické ukládání zastaveno.')}
-    validate(d);
-    if(JSON.stringify(d.bets)!==JSON.stringify(data.bets)||JSON.stringify(d.predictions)!==JSON.stringify(data.predictions)){
-     conflict=true;throw Error('Společná data se liší. Nejdříve zálohuj a načti společnou verzi.')
-    }
-    sha=latest.sha;
-   }
-  }
-  await saveToGitHub();
- }finally{saving=false}
+ if(!config()||saving||!dirty||!navigator.onLine)return;
+ saving=true;try{await saveToGitHub()}finally{saving=false}
 }
 async function periodicSync(){
  if(polling||saving||!config()||!navigator.onLine)return;
  polling=true;
  try{
-  if(dirty){if(!conflict)await autosave();return}
+  if(dirty){await autosave();return}
   const rev=revision,latest=await remote();if(!latest)return;
-  if(latest.sha===sha){if(!dirty)syncSignal(true);return;}
-  let d;try{d=JSON.parse(decode(latest.content))}catch{throw Error('Společný JSON nelze přečíst. Místní data zůstala zachována.')}
-  validate(d);
-  if(dirty||revision!==rev||saving)return;
-  const history=data.history;data=d;sha=latest.sha;clearUndo();mergeHistory(history);evaluate(true);store();render();
-  syncSignal(true);
+  if(latest.sha===sha){syncStatus(dirty?'Místní změny čekají na odeslání':'Data synchronizována',dirty?'info':'ok');return}
+  let d;try{d=JSON.parse(decode(latest.content));validate(d)}catch{throw Error('Společný JSON nelze přečíst; místní data zůstala zachována.')}
+  if(dirty||revision!==rev)return;
+  const combined=mergeShared(d,data),changed=JSON.stringify(combined)!==JSON.stringify(d);
+  sha=latest.sha;applyShared(combined);clearUndo();
+  dirty=changed;localStorage[changed?'setItem':'removeItem'](DIRTY,'1');
+  syncStatus(changed?'Sloučené změny odesílám na GitHub…':'Data synchronizována · změny převzaty z GitHubu',changed?'info':'ok');
+  if(changed){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>syncStatus(e.message,'error')),100)}
  }catch(e){syncStatus('Synchronizace: '+e.message,'error')}finally{polling=false}
 }
 function download(name,s){let blob=new Blob([s],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
@@ -180,19 +205,27 @@ act('generate',()=>generate());act('save',()=>{let d=$('date').value;if(!d||![0,
   if(matchMedia('(max-width:700px)').matches){$('predictions').children[incomplete]?.scrollIntoView({behavior:'smooth',block:'center'})}
   throw Error(`Kombinace ${incomplete+1}: chybí ${missing} ${missing===1?'číslo':missing>=2&&missing<=4?'čísla':'čísel'}. Pro uložení musí mít každá kombinace 6 čísel.`)
  }
- let old=new Set(data.bets.filter(b=>b.date!==d).map(b=>key(b.numbers))),batch=new Set(),accepted=[];for(let a of data.predictions){let k=key(a);if(!k||old.has(k)||batch.has(k))continue;batch.add(k);accepted.push(a)}if(!accepted.length)throw Error('Všechny kombinace už byly vsazeny; nic se nezměnilo.');checkpoint();data.bets=data.bets.filter(b=>b.date!==d);accepted.forEach((a,i)=>data.bets.push({date:d,numbers:a,result:'Nevyhodnoceno',hits1:'',hits2:'',method:'Sportka AI WEB',amount:'0',order:i+1}));persist();render();info(`Uloženo ${accepted.length} sázek.`)});
+ let old=new Set(data.bets.filter(b=>b.date!==d).map(b=>key(b.numbers))),batch=new Set(),accepted=[];for(let a of data.predictions){let k=key(a);if(!k||old.has(k)||batch.has(k))continue;batch.add(k);accepted.push(a)}if(!accepted.length)throw Error('Všechny kombinace už byly vsazeny; nic se nezměnilo.');checkpoint();markDeleted(data.bets.filter(b=>b.date===d));data.bets=data.bets.filter(b=>b.date!==d);const stamp=Date.now()+1000;accepted.forEach((a,i)=>{const bet={date:d,numbers:a,result:'Nevyhodnoceno',hits1:'',hits2:'',method:'Sportka AI WEB',amount:'0',order:i+1,_savedAt:stamp+i};data.bets.push(bet);delete data.deletedBets[betKey(bet)]});persist();render();info(`Uloženo ${accepted.length} sázek.`)});
 act('evaluate',()=>{checkpoint();let n=evaluate();if(!n){undoStack.pop();updateUndoButtons()}render();info(n?`Vyhodnoceno ${n} sázek.`:'Žádné nové výsledky k vyhodnocení.')});
 act('undo',()=>travel(undoStack,redoStack,'Vrácena poslední změna.'));act('redo',()=>travel(redoStack,undoStack,'Změna znovu provedena.'));updateUndoButtons();
-act('connect',async()=>{cfg={owner:$('owner').value.trim(),repo:$('repo').value.trim(),token:$('token').value.trim()};if(!config())throw Error('Vyplň GitHub uživatele, repozitář a token.');localStorage.setItem(CFG,JSON.stringify(cfg));sessionStorage.removeItem(CFG);sha=null;conflict=false;if(dirty){info('Přístup nastaven. Místní změny nejsou synchronizované – nejprve exportuj zálohu JSON.');return}let ok=await pull();info(ok?'Společná data načtena.':'Přístup nastaven. Společný JSON zatím neexistuje.')});
+act('connect',async()=>{const owner=$('owner').value.trim(),repo=$('repo').value.trim(),token=$('token').value.trim()||(owner===cfg.owner&&repo===cfg.repo?cfg.token:'');cfg={owner,repo,token};if(!config())throw Error('Vyplň GitHub uživatele, repozitář a token.');sessionStorage.setItem('sportka_gh_token',token);if($('sportkaRemember').checked)localStorage.setItem(REMEMBER,token);else localStorage.removeItem(REMEMBER);sha=null;conflict=false;const ok=await pull();info(ok?'Společná data bezpečně sloučena.':'Přístup nastaven; společný JSON zatím neexistuje.');if(!ok&&dirty)autosave().catch(e=>syncStatus(e.message,'error'))});
 act('pull',async()=>{if(!confirm(dirty?'Máš nesynchronizované změny. Doporučujeme nejprve Záloha JSON. Opravdu načíst společnou verzi?':'Načíst společnou databázi z GitHubu?'))return;let ok=await pull(true);if(!ok)throw Error('sportka-data.json neexistuje.');info('Společná data načtena.')});
-act('push',async()=>{if(sha===null){let latest=await remote();if(latest)throw Error('Společná data už existují. Nejprve načti společnou verzi.')}await push();info('Společná data uložena na GitHub.')});
-act('disconnect',()=>{cfg={};sha=null;localStorage.removeItem(CFG);sessionStorage.removeItem(CFG);$('token').value='';syncStatus('nepřipojeno','error')});
+act('push',async()=>{await push();info('Společná data uložena na GitHub.')});
+act('disconnect',()=>{cfg={owner:cfg.owner,repo:cfg.repo,token:''};sha=null;localStorage.removeItem(CFG);sessionStorage.removeItem(CFG);localStorage.removeItem(REMEMBER);sessionStorage.removeItem('sportka_gh_token');$('token').value='';$('sportkaRemember').checked=false;syncStatus('nepřipojeno','error')});
 act('exportHistory',()=>download('sportka.csv',historyCSV()));act('exportBets',()=>download('vsazene_kombinace.csv',betsCSV()));act('exportPred',()=>download('sportka_predikce.csv',data.predictions.map(a=>a.join(',')).join('\r\n')+'\r\n'));act('backup',()=>download('sportka-zaloha.json',JSON.stringify(data,null,2)));
 $('importHistory').onchange=async e=>{try{let f=e.target.files[0];if(!f)return;let rows=parseHistory(await f.text());if(confirm(`Nahradit historii (${rows.length} losování)?`)){checkpoint();data.history=rows;persist();render()}}catch(err){info(err.message,true)}};
-$('importBets').onchange=async e=>{try{let f=e.target.files[0];if(!f)return;let rows=parseBets(await f.text());if(confirm(`Nahradit sázky (${rows.length})?`)){checkpoint();data.bets=rows;persist();render()}}catch(err){info(err.message,true)}};
-$('restore').onchange=async e=>{try{let f=e.target.files[0];if(!f)return;let d=JSON.parse(await f.text());validate(d);if(confirm('Přepsat místní data zálohou?')){checkpoint();data=d;persist();render()}}catch(err){info(err.message,true)}};
+$('importBets').onchange=async e=>{try{let f=e.target.files[0];if(!f)return;let rows=parseBets(await f.text());if(confirm(`Nahradit sázky (${rows.length})?`)){checkpoint();markDeleted(data.bets);restoreBets(rows);persist();render()}}catch(err){info(err.message,true)}};
+$('restore').onchange=async e=>{try{let f=e.target.files[0];if(!f)return;let d=JSON.parse(await f.text());validate(d);if(confirm('Přepsat místní data zálohou?')){checkpoint();markDeleted(data.bets);const removed={...data.deletedBets,...(d.deletedBets||{})};data={...initial(),...d,deletedBets:removed};restoreBets(d.bets);data.predictionsUpdatedAt=Date.now();persist();render()}}catch(err){info(err.message,true)}};
 async function refresh(){if(location.protocol==='file:')return;let r=await fetch('./sportka.csv?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('Historie CSV HTTP '+r.status);let n=mergeHistory(parseHistory(await r.text()));if(n){evaluate(true);render();info(`Načteno ${n} nových losování.`)}}
-$('owner').value=cfg.owner||'';$('repo').value=cfg.repo||'';let now=new Date(),d=new Date(now);while(![0,3,5].includes(d.getDay()))d.setDate(d.getDate()+1);$('date').value=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+$('owner').value=cfg.owner||'';$('repo').value=cfg.repo||'';
+// Add one small setting without changing Sportka's existing layout or styles.
+const rememberLabel=document.createElement('label');rememberLabel.style.cssText='display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#8bb7f0';
+const rememberBox=document.createElement('input');rememberBox.type='checkbox';rememberBox.id='sportkaRemember';rememberBox.checked=!!localStorage.getItem(REMEMBER);
+rememberBox.style.cssText='width:14px;min-width:14px;max-width:14px;height:14px;flex:0 0 14px;margin:0;padding:0;vertical-align:middle';
+rememberLabel.style.cssText+=';justify-content:flex-start;text-align:left;white-space:nowrap;width:100%;line-height:18px';
+rememberLabel.append(rememberBox,document.createTextNode('Pamatovat klíč na tomto zařízení'));
+$('token').insertAdjacentElement('afterend',rememberLabel);
+let now=new Date(),d=new Date(now);while(![0,3,5].includes(d.getDay()))d.setDate(d.getDate()+1);$('date').value=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
 // Sportka: středa, pátek, neděle. Stejný Flatpickr na PC i mobilu.
 if(typeof flatpickr==='function'){
  const sportkaPicker=flatpickr($('date'),{
@@ -206,7 +239,7 @@ if(typeof flatpickr==='function'){
 }else{
  $('date').type='date';$('date').readOnly=false;
 }
-seed();evaluate(true);render();syncStatus(config()?(dirty?'místní změny čekají na odeslání':'připojeno – ověřuji synchronizaci'):'nepřipojeno',config()?'info':'error');(async()=>{try{await refresh()}catch(e){info(e.message,true)}if(config()&&!dirty){try{await pull();await refresh()}catch(e){info(e.message,true)}}if(!data.predictions.length&&data.history.length){try{generate(true)}catch(e){info('Automatické generování: '+e.message,true)}}})();
+seed();evaluate(true);render();syncStatus(config()?(dirty?'místní změny čekají na odeslání':'připojeno – ověřuji synchronizaci'):'nepřipojeno',config()?'info':'error');(async()=>{try{await refresh()}catch(e){info(e.message,true)}if(config()){try{await pull();await refresh()}catch(e){syncStatus(e.message,'error')}}if(!data.predictions.length&&data.history.length){try{generate(true)}catch(e){info('Automatické generování: '+e.message,true)}}})();
 setInterval(()=>{if(config()&&navigator.onLine){if(dirty&&!conflict)autosave().catch(e=>info(e.message,true));else if(!dirty)periodicSync()}},SYNC_MS);
 window.addEventListener('online',()=>periodicSync());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)periodicSync()});
