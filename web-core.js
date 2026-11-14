@@ -59,9 +59,18 @@ const csvContent=name=>name==='vsazene_kombinace.csv'?betsCSV():name==='sportka_
 let localCsvDirectory=null,localCsvQueue=Promise.resolve(),csvPending=localStorage.getItem('sportka_csv_pending')==='1';
 function csvStatus(s){const el=$('sportkaCsvStatus');if(el)el.textContent=s}
 function queueLocalCsv(){
- if(!localCsvDirectory)return;
+ // Stejný automatický místní zápis jako Eurojackpot; funguje pouze na vlastním lokálním serveru.
+ const onLocalServer=location.protocol==='http:'&&location.hostname==='127.0.0.1'&&location.port==='8765';
+ if(!onLocalServer&&!localCsvDirectory)return;
  const snapshot=CSV_FILES.map(name=>[name,csvContent(name)]);
  localCsvQueue=localCsvQueue.catch(()=>{}).then(async()=>{
+  if(onLocalServer){
+   const payload=Object.fromEntries(snapshot);
+   const response=await fetch('/__sportka_csv_write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+   if(!response.ok)throw Error('Lokální server odmítl zápis ('+response.status+').');
+   csvStatus('Místní CSV: automaticky uloženo');
+   return;
+  }
   if(await localCsvDirectory.queryPermission({mode:'readwrite'})!=='granted')throw Error('Složka nemá oprávnění k zápisu.');
   for(const [name,content] of snapshot){const file=await localCsvDirectory.getFileHandle(name,{create:true});const writer=await file.createWritable();try{await writer.write(content);await writer.close()}catch(e){await writer.abort().catch(()=>{});throw e}}
   csvStatus('Místní CSV: uloženo');
