@@ -650,7 +650,7 @@ trigger.addEventListener('click',show);close.addEventListener('click',hide);
 overlay.addEventListener('click',e=>{if(e.target===overlay)hide()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('visible')){e.stopPropagation();hide()}});
 
-function render(){content=panel.firstElementChild;content.replaceChildren();const d=get(), bets=d.bets, history=d.history, complete=bets.filter(b=>isWin(b)||isLoss(b)),wins=complete.filter(isWin),losses=complete.filter(isLoss),pending=bets.length-complete.length;
+function render(){panel.replaceChildren();content=panel;const d=get(), bets=d.bets, history=d.history, complete=bets.filter(b=>isWin(b)||isLoss(b)),wins=complete.filter(isWin),losses=complete.filter(isLoss),pending=bets.length-complete.length;
 const COST=30; // Allwyn: základní sloupec Sportky včetně obou tahů, bez Šance
 let payout=wins.reduce((sum,b)=>sum+num(b.amount),0),knownPayout=wins.filter(b=>num(b.amount)>0).length,spend=bets.length*COST;
 const line=(label,value)=>{let box=el('div','sportka-balance-line');box.append(el('span','',label),el('strong','',value));content.append(box)};
