@@ -602,7 +602,132 @@ main>section.panel:has(#predictions),main>section.panel:has(.history){padding:0!
 /* Stavové hlášky patří do indikátoru vlevo dole. */
 #githubIndicator.local-change{color:#a8d5ff!important;border-color:#3179bd!important;background:#163a61!important}
 #githubIndicator.sync-success{color:#b5f2c7!important;border-color:#3b875a!important;background:#1a4934!important}
-</style><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"><script src="https://cdn.jsdelivr.net/npm/flatpickr"></script><script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/cs.js"></script></head><body><main><h1>Sportka</h1><div class="bar"><div class="date-menu-row"><button type="button" id="menuToggle" aria-label="Zobrazit akce" aria-expanded="false"><span class="hamburger-icon">☰</span> <span>Menu</span></button><label>Datum sázky: <input id="date" type="text" placeholder="Vyber datum losování" readonly></label></div><div class="action-buttons" id="sportkaActions"><button class="green" id="generate">Generovat nová čísla</button><button id="save" disabled>Uložit všech 6 sázek</button><button class="red" id="evaluate">Vyhodnotit výsledky</button></div></div><p id="status" class="notice" role="status"></p><details class="panel sportka-side" id="sportkaSettings"><summary class="side-tab" aria-label="Otevřít nastavení">⚙ Nastavení · GitHub · import / export</summary><div class="side-inner"><h2>Sportka – synchronizace a data</h2><div class="settings"><input id="owner" placeholder="GitHub uživatel"><input id="repo" placeholder="Repozitář"><input id="token" type="password" placeholder="GitHub token"><button id="connect">Nastavit přístup</button><button id="pull">Načíst společnou</button><button class="green" id="push">Uložit společnou</button><button class="red" id="disconnect">Odpojit klíč</button></div><div class="settings"><label>Import historie <input type="file" id="importHistory" accept=".csv"></label><label>Import sázek <input type="file" id="importBets" accept=".csv"></label><button id="exportHistory">Export historie CSV</button><button id="exportBets">Export sázek CSV</button><button id="exportPred">Export predikcí CSV</button><button id="backup">Záloha JSON</button><label>Obnovit JSON <input type="file" id="restore" accept=".json"></label></div><p class="small">GitHub token se uchovává v localStorage tohoto prohlížeče až do odpojení klíče. Na sdíleném zařízení klíč neukládejte. Společná data: sportka-data.json. Záloha: sportka-zaloha.json. Při konfliktech se data nepřepisují automaticky.</p></div></details><section class="panel prediction-panel"><div class="prediction-title-row"><h2>Predikce (6 sloupců: 6 z 49)</h2><div class="sportka-zoom"><button type="button" id="sportkaZoomOut" title="Zmenšit kombinace">−</button><button type="button" id="sportkaZoomIn" title="Zvětšit kombinace">+</button></div></div><div class="cards" id="predictions"><p class="small">Připravuji šest kombinací…</p></div></section><section class="panel"><div id="githubIndicator" class="github-indicator" role="status">⚠ Nepřipojeno</div><div class="history-heading"><h2>Historie vsazených sázek</h2><div class="undo-actions"><button id="undo" disabled title="Vrátit poslední změnu">↶ Zpět</button><button id="redo" disabled title="Znovu provést změnu">Vpřed ↷</button></div></div><div class="history-frame"><div class="history"><table><thead><tr><th>Datum</th><th>KOMBINACE</th><th>Výsledek</th><th>Shoda 1. tah</th><th>Shoda 2. tah</th><th></th></tr></thead><tbody id="bets"></tbody></table></div></div></section></main><div id="sportkaToast" class="sportka-toast" role="status" aria-live="polite"></div><script src="initial-data.js"></script><script src="web-core.js"></script><script>(function(){
+</style><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"><script src="https://cdn.jsdelivr.net/npm/flatpickr"></script><script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/cs.js"></script></head><body><main><h1>Sportka</h1><div class="bar"><div class="date-menu-row"><button type="button" id="menuToggle" aria-label="Zobrazit akce" aria-expanded="false"><span class="hamburger-icon">☰</span> <span>Menu</span></button><label>Datum sázky: <input id="date" type="text" placeholder="Vyber datum losování" readonly></label></div><div class="action-buttons" id="sportkaActions"><button class="green" id="generate">Generovat nová čísla</button><button id="save" disabled>Uložit všech 6 sázek</button><button class="red" id="evaluate">Vyhodnotit výsledky</button></div></div><p id="status" class="notice" role="status"></p><details class="panel sportka-side" id="sportkaSettings"><summary class="side-tab" aria-label="Otevřít nastavení">⚙ Nastavení · GitHub · import / export</summary><div class="side-inner"><h2>Sportka – synchronizace a data</h2><div class="settings"><input id="owner" placeholder="GitHub uživatel"><input id="repo" placeholder="Repozitář"><input id="token" type="password" placeholder="GitHub token"><button id="connect">Nastavit přístup</button><button id="pull">Načíst společnou</button><button class="green" id="push">Uložit společnou</button><button class="red" id="disconnect">Odpojit klíč</button></div><div class="settings"><label>Import historie <input type="file" id="importHistory" accept=".csv"></label><label>Import sázek <input type="file" id="importBets" accept=".csv"></label><button id="exportHistory">Export historie CSV</button><button id="exportBets">Export sázek CSV</button><button id="exportPred">Export predikcí CSV</button><button id="backup">Záloha JSON</button><label>Obnovit JSON <input type="file" id="restore" accept=".json"></label></div><p class="small">GitHub token se uchovává v localStorage tohoto prohlížeče až do odpojení klíče. Na sdíleném zařízení klíč neukládejte. Společná data: sportka-data.json. Záloha: sportka-zaloha.json. Při konfliktech se data nepřepisují automaticky.</p></div></details><section class="panel prediction-panel"><div class="prediction-title-row"><h2>Predikce (6 sloupců: 6 z 49)</h2><div class="sportka-zoom"><button type="button" id="sportkaZoomOut" title="Zmenšit kombinace">−</button><button type="button" id="sportkaZoomIn" title="Zvětšit kombinace">+</button></div></div><div class="cards" id="predictions"><p class="small">Připravuji šest kombinací…</p></div></section><section class="panel"><div id="githubIndicator" class="github-indicator" role="status">⚠ Nepřipojeno</div><div class="history-heading"><h2>Historie vsazených sázek</h2><div class="undo-actions"><button id="undo" disabled title="Vrátit poslední změnu">↶ Zpět</button><button id="redo" disabled title="Znovu provést změnu">Vpřed ↷</button></div></div><div class="history-frame"><div class="history"><table><thead><tr><th>Datum</th><th>KOMBINACE</th><th>Výsledek</th><th>Shoda 1. tah</th><th>Shoda 2. tah</th><th></th></tr></thead><tbody id="bets"></tbody></table></div></div></section></main><div id="sportkaToast" class="sportka-toast" role="status" aria-live="polite"></div><script src="initial-data.js"></script><script src="web-core.js"></script><script src="sportka-vyhry.js"></script><script>
+/* Sportka WEB2: read-only analytics. Never changes synced data or GitHub. */
+(()=>{'use strict';
+const DATA_KEY='sportka_web_v1', COST_KEY='sportka_analytics_cost_per_column';
+const money=n=>new Intl.NumberFormat('cs-CZ',{style:'currency',currency:'CZK',maximumFractionDigits:2}).format(n);
+const num=x=>{let n=Number(String(x??'').replace(/\s/g,'').replace(',','.'));return Number.isFinite(n)?n:0};
+const fmt=n=>new Intl.NumberFormat('cs-CZ').format(n);
+const el=(tag,cls,text)=>{let x=document.createElement(tag);if(cls)x.className=cls;if(text!==undefined)x.textContent=text;return x};
+const get=()=>{try{let d=JSON.parse(localStorage.getItem(DATA_KEY)||'{}');return {bets:Array.isArray(d.bets)?d.bets:[],history:Array.isArray(d.history)?d.history:[],predictions:Array.isArray(d.predictions)?d.predictions:[]}}catch{return {bets:[],history:[],predictions:[]}}};
+const valid=a=>Array.isArray(a)&&a.length===6&&new Set(a.map(Number)).size===6&&a.every(x=>Number.isInteger(Number(x))&&x>=1&&x<=49);
+const isWin=b=>/^výhra/i.test(String(b.result||''))||String(b.result||'').toLowerCase()==='vyhra';
+const isLoss=b=>/^prohra/i.test(String(b.result||''));
+const statRow=(parent,label,value,desc)=>{const x=el('div','sportka-stat');x.append(el('div','sportka-stat-label',label),el('strong','',value));if(desc)x.append(el('small','',desc));parent.append(x)};
+const css=`
+#sportkaAnalytics{margin:18px auto 26px;max-width:825px;border:1px solid #394d70;border-radius:8px;background:#1c2740;color:#d8e6ff;padding:16px;font:14px system-ui,sans-serif;box-sizing:border-box}
+#sportkaAnalytics summary{cursor:pointer;color:#89b9ff;font-weight:700;font-size:17px;user-select:none}
+#sportkaAnalytics .sportka-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin:14px 0}
+#sportkaAnalytics .sportka-stat{background:#24334f;border:1px solid #3c5072;border-radius:6px;padding:10px;min-width:0}
+#sportkaAnalytics .sportka-stat strong{display:block;font-size:19px;margin:5px 0;color:#f4f8ff;overflow-wrap:anywhere}
+#sportkaAnalytics .sportka-stat small{display:block;color:#b4c6e2;font-size:11px}
+#sportkaAnalytics .sportka-stat-label{font-size:12px;color:#b4c6e2}
+#sportkaAnalytics p{line-height:1.5;margin:8px 0}
+#sportkaAnalytics label{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0}
+#sportkaAnalytics input{width:100px;max-width:100%;background:#111b2f;color:#fff;border:1px solid #607aa0;padding:7px;border-radius:4px}
+#sportkaAnalytics button{background:#355889;color:white;border:1px solid #6789bb;padding:7px 11px;border-radius:5px;cursor:pointer}
+#sportkaAnalytics .sportka-note{color:#d9c9a0;font-size:12px}
+#sportkaAnalytics .sportka-freq{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0}
+#sportkaAnalytics .sportka-freq span{display:inline-block;border:1px solid #536f98;border-radius:5px;padding:5px 7px;background:#293d5f}
+#sportkaAnalytics h3{font-size:15px;color:#9ec6ff;margin:17px 0 5px}
+@media(max-width:600px){#sportkaAnalytics{padding:12px;margin:12px 0}#sportkaAnalytics .sportka-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+`;
+function init(){if(document.getElementById('sportkaAnalytics'))return;let style=el('style');style.textContent=css;document.head.append(style);
+const panel=el('details');panel.id='sportkaAnalytics';panel.append(el('summary','', '📊 Učení z CSV · statistiky · finanční bilance'));
+const content=el('div');panel.append(content);
+const main=document.querySelector('main');if(!main)return;main.append(panel);
+function render(){content.replaceChildren();const d=get(), bets=d.bets, history=d.history, complete=bets.filter(b=>isWin(b)||isLoss(b)),wins=complete.filter(isWin),losses=complete.filter(isLoss),pending=bets.length-complete.length;
+let cost=num(localStorage.getItem(COST_KEY)),payout=wins.reduce((sum,b)=>sum+num(b.amount),0),knownPayout=wins.filter(b=>num(b.amount)>0).length,spend=bets.length*cost;
+let grid=el('div','sportka-stat-grid');statRow(grid,'Historie losování',fmt(history.length));statRow(grid,'Evidované sloupce',fmt(bets.length));statRow(grid,'Vyhodnocené',fmt(complete.length));statRow(grid,'Výherní / proherní',`${wins.length} / ${losses.length}`);statRow(grid,'Čekají na výsledek',fmt(pending));statRow(grid,'Zadané výhry',money(payout),`${knownPayout} z ${wins.length} výher má částku > 0`);content.append(grid);
+content.append(el('h3','','Finanční bilance'));
+let label=el('label','','Cena jednoho vsazeného sloupce (Kč):');let inp=el('input');inp.type='number';inp.min='0';inp.step='0.01';inp.value=cost?String(cost):'';inp.placeholder='Doplň cenu';inp.setAttribute('aria-label','Cena jednoho sloupce v Kč');let btn=el('button','','Přepočítat');label.append(inp,btn);content.append(label);
+btn.addEventListener('click',()=>{let value=inp.value.trim();if(value&&(!Number.isFinite(Number(value))||Number(value)<0)){alert('Zadej nezápornou cenu sloupce.');return}localStorage.setItem(COST_KEY,value||'0');render()});
+let moneygrid=el('div','sportka-stat-grid');statRow(moneygrid,'Výhry evidované v CSV',money(payout));statRow(moneygrid,'Náklady na sloupce',cost>0?money(spend):'Nezadáno',cost>0?`${bets.length} × ${money(cost)}`:'Doplň cenu jednoho sloupce');statRow(moneygrid,'Bilance',cost>0?money(payout-spend):'Nelze spočítat',cost>0?'Výhry minus náklady':'Chybí náklady');content.append(moneygrid);
+content.append(el('p','sportka-note','Částka v CSV je počítána jako evidovaná výhra. Náklady jsou odhad podle zadané ceny za sloupec, včetně dosud nevyhodnocených sázek. Cena se ukládá jen v tomto prohlížeči, ne na GitHub. Pokud je výhra v CSV bez částky, skutečná bilance může být vyšší.'));
+content.append(el('h3','','Učení a historie čísel'));
+let freq=new Map(Array.from({length:49},(_,i)=>[i+1,0])),validDraws=0;
+for(const h of history)for(const draw of (h.draws||[])){if(!valid(draw.numbers))continue;validDraws++;for(const n of draw.numbers)freq.set(Number(n),freq.get(Number(n))+1)}
+let sorted=[...freq].sort((a,b)=>b[1]-a[1]||a[0]-b[0]),high=sorted.slice(0,10),low=[...freq].sort((a,b)=>a[1]-b[1]||a[0]-b[0]).slice(0,10);
+const row=(name,items)=>{content.append(el('p','',name));let x=el('div','sportka-freq');for(const [n,v] of items)x.append(el('span','',`${n} · ${v}×`));content.append(x)};
+row('Nejčastější čísla v historii (oba tahy):',high);row('Nejméně častá čísla v historii:',low);
+const checked=bets.filter(b=>history.some(h=>h.date===b.date)&&valid(b.numbers));
+content.append(el('p','',`Datový základ: ${fmt(validDraws)} platných tahů a ${fmt(checked.length)} sázek spárovaných s losováním. Současný generátor Sportky už používá četnosti čísel, dvojic, trojic a zpětnou vazbu z vyhodnocených sázek. Tento panel tyto údaje zpřehledňuje; nemění algoritmus ani synchronizovaná data.`));
+content.append(el('p','sportka-note','Historická četnost ani učení z minulých tahů nezaručují vyšší šanci na výhru. Každé losování je náhodné.'));
+content.append(el('h3','','Kontrola výherních pořadí Sportky'));
+const byDate=new Map(history.map(h=>[h.date,h]));let checkedCount=0,missingCount=0,hitCount=0,unknownAmounts=0;const issues=[];
+const rank=(ns,dr)=>{if(!dr||!valid(dr.numbers))return null;const nums=ns.map(Number);const hit=nums.filter(n=>dr.numbers.map(Number).includes(n)).length;return hit===6?1:hit===5&&nums.includes(Number(dr.bonus))?2:hit===5?3:hit===4?4:hit===3?5:0};
+for(const bet of bets){const draw=byDate.get(bet.date);if(!draw||!Array.isArray(draw.draws)||draw.draws.length<2){missingCount++;continue}if(!valid(bet.numbers)){issues.push(`${bet.date}: neplatná kombinace`);continue}const r=draw.draws.slice(0,2).map(d=>rank(bet.numbers,d));if(r.some(x=>x===null)){missingCount++;continue}checkedCount++;const win=r.some(x=>x>0);if(win){hitCount++;if(!(num(bet.amount)>0))unknownAmounts++}if((isWin(bet)||isLoss(bet))&&win!==isWin(bet))issues.push(`${bet.date} · ${bet.numbers.join(', ')}: výsledek v evidenci nesouhlasí s taženými čísly`)}
+let auditGrid=el('div','sportka-stat-grid');statRow(auditGrid,'Ověřeno proti tahům',fmt(checkedCount));statRow(auditGrid,'Výherních kombinací',fmt(hitCount));statRow(auditGrid,'Výhry bez částky',fmt(unknownAmounts));statRow(auditGrid,'Chybějící losování',fmt(missingCount));content.append(auditGrid);
+content.append(el('p','sportka-note','Kontrola výherních pořadí: 6, 5 + dodatkové, 5, 4 nebo 3 shodná čísla v každém ze dvou tahů. Výše výhry závisí na konkrétním slosování a tahu; bez ověřené výplatní tabulky se částka nedopočítává ani nepřepisuje.'));
+// Date-scoped payout verification; only apply when BOTH draw sets match the published table.
+content.append(el('h3','','Automatické ověření výherních částek z archivu'));
+const published=window.SPORTKA_PAYOUTS||{};
+let archiveCount=0, archiveWins=0, archiveSum=0, payoutConflicts=[], unknownDates=new Set(), verifiedBets=0;
+for(const bet of bets){
+ const p=published[bet.date], h=byDate.get(bet.date);
+ if(!p){if(h&&valid(bet.numbers))unknownDates.add(bet.date);continue}
+ if(!h||!Array.isArray(h.draws)||h.draws.length<2||!Array.isArray(p.draws)||p.draws.length!==2||!Array.isArray(p.prizes)||p.prizes.length!==2){continue}
+ const same=h.draws.slice(0,2).every((d,i)=>valid(d.numbers)&&Array.isArray(p.draws[i])&&p.draws[i].length===7&&d.numbers.map(Number).every(n=>p.draws[i].slice(0,6).map(Number).includes(n))&&Number(d.bonus)===Number(p.draws[i][6]));
+ if(!same){payoutConflicts.push(`${bet.date}: archiv a historie mají jiné tažené hodnoty`);continue}
+ if(!valid(bet.numbers))continue;
+ const ranks=h.draws.slice(0,2).map(d=>rank(bet.numbers,d));
+ if(ranks.some(r=>r===null))continue;
+ const value=ranks.reduce((s,r,i)=>s+(r>0&&Number.isFinite(Number(p.prizes[i][r-1]))?Number(p.prizes[i][r-1]):0),0);
+ verifiedBets++;archiveSum+=value;if(value>0)archiveWins++;
+ if(value>0&&num(bet.amount)>0&&value!==num(bet.amount))payoutConflicts.push(`${bet.date} · ${bet.numbers.join(', ')}: evidence ${money(num(bet.amount))}, archiv ${money(value)}`);
+}
+archiveCount=Object.keys(published).length;
+const pg=el('div','sportka-stat-grid');statRow(pg,'Archivované tabulky',fmt(archiveCount));statRow(pg,'Sázky s ověřeným dnem',fmt(verifiedBets));statRow(pg,'Výhry podle archivu',money(archiveSum),`${archiveWins} výherních sloupců`);statRow(pg,'Rozpory částek / losování',fmt(payoutConflicts.length));content.append(pg);
+if(cost>0&&verifiedBets===bets.length){content.append(el('p','',`Bilance podle archivu (všechny sázky): ${money(archiveSum-bets.length*cost)}`))}
+else content.append(el('p','sportka-note',`Úplná bilance podle archivu zatím není dostupná: chybí výplatní tabulky nebo cena sloupce. Neověřené dny: ${unknownDates.size}. Částky v CSV zůstávají beze změny.`));
+for(const issue of payoutConflicts.slice(0,15))content.append(el('p','sportka-note','⚠ '+issue));
+content.append(el('p','sportka-note','Archiv sportkasazka.cz je nezávislý informační zdroj, nikoliv oficiální potvrzení vyplacení tiketu. Výplaty se počítají zvlášť za oba tahy, jen při shodě data i všech tažených čísel. Neověřené výhry se neodhadují.'));
+
+// Walk-forward validation: every prediction uses ONLY draws preceding its target draw.
+content.append(el('h3','','Zpětný test učení · bez znalosti budoucnosti'));
+const ordered=history.filter(h=>h&&/^\d{4}-\d\d-\d\d$/.test(h.date)&&Array.isArray(h.draws)&&h.draws.length>=2&&h.draws.slice(0,2).every(x=>valid(x.numbers))).sort((a,b)=>a.date.localeCompare(b.date));
+const TRAIN=120, LIMIT=240;
+const sample=ordered.slice(Math.max(TRAIN,ordered.length-LIMIT));
+let tested=0, modelHits=0, baselineHits=0, modelWin=0, baselineWin=0, scoreDiff=0;
+const hits=(nums,draw)=>nums.filter(n=>draw.numbers.map(Number).includes(n)).length;
+for(let i=Math.max(TRAIN,ordered.length-LIMIT);i<ordered.length;i++){
+  const previous=ordered.slice(Math.max(0,i-TRAIN),i), target=ordered[i];
+  if(previous.length<TRAIN)continue;
+  const counts=Array(50).fill(0);
+  for(const h of previous)for(const d of h.draws.slice(0,2))for(const n of d.numbers)counts[Number(n)]++;
+  // A transparent frequency baseline; not a claim about the app's existing SMART algorithm.
+  const hot=Array.from({length:49},(_,j)=>j+1).sort((a,b)=>counts[b]-counts[a]||a-b).slice(0,6);
+  const neutral=[1,9,17,25,33,41]; // Fixed control set, never trained on future draws.
+  const model=Math.max(...target.draws.slice(0,2).map(d=>hits(hot,d)));
+  const base=Math.max(...target.draws.slice(0,2).map(d=>hits(neutral,d)));
+  modelHits+=model;baselineHits+=base;modelWin+=Number(model>=3);baselineWin+=Number(base>=3);scoreDiff+=model-base;tested++;
+}
+const walk=el('div','sportka-stat-grid');
+statRow(walk,'Otestovaná slosování',fmt(tested));
+statRow(walk,'Četnostní model ≥ 3 shody',fmt(modelWin));
+statRow(walk,'Kontrolní kombinace ≥ 3',fmt(baselineWin));
+statRow(walk,'Průměrný nejlepší zásah',tested?(modelHits/tested).toFixed(2)+' / '+(baselineHits/tested).toFixed(2):'Nedostatek dat','Model / kontrola; nejlepší z obou tahů');
+content.append(walk);
+content.append(el('p','sportka-note','Zpětný test hodnotí transparentní četnostní model (posledních 120 předchozích slosování) proti pevné kontrolní kombinaci na nejvýše 240 následujících slosováních. Není to test interního generátoru SMART ani důkaz schopnosti předvídat náhodná čísla.'));
+content.append(el('h3','','Úspěšnost metod sázení'));
+const methods=new Map();
+for(const bet of bets){const method=String(bet.method||'Neurčeno').trim()||'Neurčeno';let m=methods.get(method);if(!m){m={total:0,win:0,loss:0,amount:0,checked:0,hit:0};methods.set(method,m)}m.total++;m.win+=Number(isWin(bet));m.loss+=Number(isLoss(bet));if(isWin(bet))m.amount+=num(bet.amount);const draw=byDate.get(bet.date);if(draw&&valid(bet.numbers)&&draw.draws?.slice(0,2).every(x=>valid(x.numbers))){m.checked++;m.hit+=Number(draw.draws.slice(0,2).some(x=>hits(bet.numbers,x)>=3))}}
+const methodTable=el('div','sportka-stat-grid');
+for(const [method,m] of [...methods].sort((a,b)=>b[1].total-a[1].total).slice(0,12))statRow(methodTable,method,`${m.win} / ${m.total}`,`Výhry / sázky · ověřeno ${m.checked} · výplaty ${money(m.amount)}`);
+content.append(methodTable);
+content.append(el('p','sportka-note','Metody se porovnávají podle skutečně uložených sázek, nikoli podle dodatečně vygenerovaných čísel. Částky jsou evidované výhry; nejsou automaticky ověřenými výplatami provozovatele.'));
+
+if(issues.length){content.append(el('p','sportka-note',`Nesoulady v evidenci: ${issues.length}`));for(const issue of issues.slice(0,20))content.append(el('p','sportka-note','⚠ '+issue))}else content.append(el('p','','U vyhodnocených sázek nebyl nalezen rozpor v počtu zásahů.'));
+
+}
+render();panel.addEventListener('toggle',()=>{if(panel.open)render()});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&panel.open)render()});
+let last='';setInterval(()=>{if(!panel.open)return;let raw=localStorage.getItem(DATA_KEY)||'';if(raw!==last){last=raw;render()}},5000);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+
+</script><script>(function(){
 const b=document.getElementById('menuToggle'), actions=document.getElementById('sportkaActions'),p=document.getElementById('sportkaSettings');
 const mobile=()=>window.matchMedia('(max-width:700px)').matches;
 const closeActions=()=>{actions.classList.remove('expanded');b.setAttribute('aria-expanded','false')};
