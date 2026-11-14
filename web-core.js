@@ -8,7 +8,7 @@ const REMEMBER='sportka_gh_token_remembered';
 let cfg;try{cfg=JSON.parse(sessionStorage.getItem(CFG)||localStorage.getItem(CFG)||'{}')||{}}catch{cfg={}}
 // Migrate legacy saved token into the current browser session; persistent storage requires opt-in.
 const legacyToken=cfg.token||'';
-cfg={owner:cfg.owner||'',repo:cfg.repo||'',token:sessionStorage.getItem('sportka_gh_token')||localStorage.getItem(REMEMBER)||legacyToken};
+cfg={owner:cfg.owner||'jerry00769',repo:cfg.repo||'Sportka',token:sessionStorage.getItem('sportka_gh_token')||localStorage.getItem(REMEMBER)||legacyToken};
 if(legacyToken&&!localStorage.getItem(REMEMBER))sessionStorage.setItem('sportka_gh_token',legacyToken);
 localStorage.removeItem(CFG);sessionStorage.removeItem(CFG);
 let sha=null,dirty=localStorage.getItem(DIRTY)==='1',saving=false,timer,revision=0,conflict=false,polling=false;const SYNC_MS=15000;
@@ -52,7 +52,57 @@ async function pullPublic(){
  finally{publicPolling=false}
 }
 
-const persist=()=>{revision++;dirty=true;conflict=false;localStorage.setItem(DIRTY,'1');store();syncState='dirty';syncStatus(config()?'místní změny čekají na odeslání':'Změny jsou jen v tomto zařízení. Pro odeslání nastav klíč.',config()?'info':'error');if(config()){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>syncStatus(e.message,'error')),350)}};
+// CSV mirrors are projections of the shared JSON, never an independent authority for deletions.
+const CSV_FILES=['vsazene_kombinace.csv','sportka_predikce.csv','sportka.csv'];
+const predCSV=()=>data.predictions.map(a=>a.join(',')).join('\r\n')+(data.predictions.length?'\r\n':'');
+const csvContent=name=>name==='vsazene_kombinace.csv'?betsCSV():name==='sportka_predikce.csv'?predCSV():historyCSV();
+let localCsvDirectory=null,localCsvQueue=Promise.resolve(),csvPending=localStorage.getItem('sportka_csv_pending')==='1';
+function csvStatus(s){const el=$('sportkaCsvStatus');if(el)el.textContent=s}
+function queueLocalCsv(){
+ if(!localCsvDirectory)return;
+ const snapshot=CSV_FILES.map(name=>[name,csvContent(name)]);
+ localCsvQueue=localCsvQueue.catch(()=>{}).then(async()=>{
+  if(await localCsvDirectory.queryPermission({mode:'readwrite'})!=='granted')throw Error('Složka nemá oprávnění k zápisu.');
+  for(const [name,content] of snapshot){const file=await localCsvDirectory.getFileHandle(name,{create:true});const writer=await file.createWritable();try{await writer.write(content);await writer.close()}catch(e){await writer.abort().catch(()=>{});throw e}}
+  csvStatus('Místní CSV: uloženo');
+ }).catch(e=>{csvStatus('Místní CSV: '+e.message);console.error(e)});
+}
+async function chooseCsvDirectory(){
+ if(!window.showDirectoryPicker)throw Error('Přímý zápis do složky není v tomto prohlížeči dostupný.');
+ const dir=await window.showDirectoryPicker({id:'sportka-csv',mode:'readwrite'});
+ if(!confirm('Povolit Sportce aktualizovat sportka.csv, vsazene_kombinace.csv a sportka_predikce.csv v této složce?'))return;
+ localCsvDirectory=dir;queueLocalCsv();await localCsvQueue;
+}
+async function remoteCsv(name,method='GET',payload){
+ if(method!=='GET'&&!config())throw Error('Pro zápis CSV na GitHub je nutný token.');
+ const url=`https://api.github.com/repos/${encodeURIComponent(cfg.owner||PUBLIC_OWNER)}/${encodeURIComponent(cfg.repo||PUBLIC_REPO)}/contents/${encodeURIComponent(name)}`;
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+ try{
+  const r=await fetch(url,{method,signal:controller.signal,cache:'no-store',headers:{...(cfg.token?{Authorization:`Bearer ${cfg.token}`} :{}),Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'},...(payload?{body:JSON.stringify(payload)}:{})});
+  const j=await r.json();if(r.status===404&&method==='GET')return null;
+  if(!r.ok){const e=Error(`${name}: ${j.message||r.status}`);e.githubConflict=r.status===409||r.status===422;throw e}
+  return j;
+ }catch(e){if(e.name==='AbortError')throw Error(name+': GitHub neodpověděl do 15 sekund');throw e}finally{clearTimeout(timeout)}
+}
+async function writeCsvMirrors(){
+ if(!config())return;
+ // Snapshot content after JSON commit; if a newer edit arrives, the next sync will update CSV again.
+ const files=CSV_FILES.map(name=>[name,csvContent(name)]);
+ for(const [name,content] of files){
+  for(let attempt=0;attempt<3;attempt++){
+   const old=await remoteCsv(name);
+   if(old?.content&&decode(old.content).replace(/\r\n/g,'\n').trim()===content.replace(/\r\n/g,'\n').trim())break;
+   try{await remoteCsv(name,'PUT',{message:'Sportka: synchronizace '+name,content:encode(content),...(old?{sha:old.sha}:{})});break}
+   catch(e){if(!e.githubConflict||attempt===2)throw e}
+  }
+ }
+ csvPending=false;localStorage.removeItem('sportka_csv_pending');csvStatus('GitHub CSV: synchronizováno');
+}
+async function flushCsvMirrors(){
+ if(!config()||!csvPending||saving||!navigator.onLine)return;
+ try{await writeCsvMirrors()}catch(e){csvStatus('GitHub CSV: chyba · '+e.message);syncStatus('JSON načten, ale CSV čeká: '+e.message,'error')}
+}
+const persist=()=>{revision++;dirty=true;conflict=false;localStorage.setItem(DIRTY,'1');store();csvPending=true;localStorage.setItem('sportka_csv_pending','1');queueLocalCsv();syncState='dirty';syncStatus(config()?'místní změny čekají na odeslání':'Změny jsou jen v tomto zařízení. Pro odeslání nastav klíč.',config()?'info':'error');if(config()){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>syncStatus(e.message,'error')),350)}};
 const betKey=b=>String(b.date)+'|'+(valid(b.numbers)||b.numbers||[]).join(',');
 function markDeleted(rows){const now=Date.now();data.deletedBets={...(data.deletedBets||{})};for(const b of rows){const k=betKey(b);data.deletedBets[k]=Math.max(Number(data.deletedBets[k])||0,now)}}
 function restoreBets(rows){const stamps={...(data.deletedBets||{})};const now=Date.now();data.bets=rows.map((b,i)=>({...b,_savedAt:now+1000+i}));for(const b of data.bets)delete stamps[betKey(b)];data.deletedBets=stamps}
@@ -69,7 +119,7 @@ function mergeShared(remoteData,localData){
  const localWins=lt>rt;
  return {...remoteData,...localData,deletedBets,bets:[...bets.values()],history:[...history.values()].sort((a,b)=>a.date.localeCompare(b.date)),predictions:localWins?localData.predictions:remoteData.predictions,predictionsUpdatedAt:localWins?lt:rt};
 }
-function applyShared(next){data=limitPredictions(next);evaluate(true);store();render()}
+function applyShared(next){data=limitPredictions(next);evaluate(true);store();render();queueLocalCsv()}
 
 // Historie uživatelských změn v rámci aktuálního otevření aplikace.
 const undoStack=[],redoStack=[],LIMIT=40;
@@ -187,11 +237,12 @@ async function saveToGitHub(){
   if(latest&&JSON.stringify(combined)===JSON.stringify(d)){
    sha=latest.sha;applyShared(combined);
    if(revision===startRevision){dirty=false;localStorage.removeItem(DIRTY)}
+   await writeCsvMirrors();
    syncStatus(dirty?'Nové změny čekají na odeslání':'Data synchronizována',dirty?'info':'ok');return;
   }
   try{
    const j=await remote('PUT',{message:'Sportka AI: synchronizace dat',content:encode(JSON.stringify(combined,null,2)),...(latest?{sha:latest.sha}:{})});
-   sha=j.content.sha;applyShared(mergeShared(combined,data));conflict=false;
+   sha=j.content.sha;applyShared(mergeShared(combined,data));conflict=false;await writeCsvMirrors();
    if(revision===startRevision){dirty=false;localStorage.removeItem(DIRTY);syncStatus('Data synchronizována · GitHub potvrdil zápis','ok')}
    else{dirty=true;localStorage.setItem(DIRTY,'1');clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>syncStatus(e.message,'error')),350)}
    return;
@@ -208,14 +259,14 @@ async function periodicSync(){
  try{
   if(dirty){await autosave();return}
   const rev=revision,latest=await remote();if(!latest)return;
-  if(latest.sha===sha){syncStatus(dirty?'Místní změny čekají na odeslání':'Data synchronizována',dirty?'info':'ok');return}
+  if(latest.sha===sha){await flushCsvMirrors();if(!csvPending)syncStatus(dirty?'Místní změny čekají na odeslání':'Data synchronizována',dirty?'info':'ok');return}
   let d;try{d=JSON.parse(decode(latest.content));validate(d)}catch{throw Error('Společný JSON nelze přečíst; místní data zůstala zachována.')}
   if(dirty||revision!==rev)return;
   const combined=mergeShared(d,data),changed=JSON.stringify(combined)!==JSON.stringify(d);
   sha=latest.sha;applyShared(combined);clearUndo();
   dirty=changed;localStorage[changed?'setItem':'removeItem'](DIRTY,'1');
   syncStatus(changed?'Sloučené změny odesílám na GitHub…':'Data synchronizována · změny převzaty z GitHubu',changed?'info':'ok');
-  if(changed){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>syncStatus(e.message,'error')),100)}
+  if(changed){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>syncStatus(e.message,'error')),100)}else await flushCsvMirrors();
  }catch(e){syncStatus('Synchronizace: '+e.message,'error')}finally{polling=false}
 }
 function download(name,s){let blob=new Blob([s],{type:'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
@@ -241,6 +292,10 @@ $('importHistory').onchange=async e=>{try{let f=e.target.files[0];if(!f)return;l
 $('importBets').onchange=async e=>{try{let f=e.target.files[0];if(!f)return;let rows=parseBets(await f.text());if(confirm(`Nahradit sázky (${rows.length})?`)){checkpoint();markDeleted(data.bets);restoreBets(rows);persist();render()}}catch(err){info(err.message,true)}};
 $('restore').onchange=async e=>{try{let f=e.target.files[0];if(!f)return;let d=JSON.parse(await f.text());validate(d);if(confirm('Přepsat místní data zálohou?')){checkpoint();markDeleted(data.bets);const removed={...data.deletedBets,...(d.deletedBets||{})};data={...initial(),...d,deletedBets:removed};restoreBets(d.bets);data.predictionsUpdatedAt=Date.now();persist();render()}}catch(err){info(err.message,true)}};
 async function refresh(){if(location.protocol==='file:')return;let r=await fetch('./sportka.csv?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('Historie CSV HTTP '+r.status);let n=mergeHistory(parseHistory(await r.text()));if(n){evaluate(true);render();info(`Načteno ${n} nových losování.`)}}
+const csvPanel=document.createElement('div');csvPanel.style.cssText='display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0;font-size:12px';
+const csvBtn=document.createElement('button');csvBtn.type='button';csvBtn.textContent='Připojit místní CSV složku';csvBtn.className='blue';csvBtn.onclick=()=>chooseCsvDirectory().catch(e=>info(e.message,true));
+const csvLabel=document.createElement('span');csvLabel.id='sportkaCsvStatus';csvLabel.textContent='CSV: místní zápis vyžaduje povolení složky';csvPanel.append(csvBtn,csvLabel);
+$('exportBets').insertAdjacentElement('afterend',csvPanel);
 $('owner').value=cfg.owner||'';$('repo').value=cfg.repo||'';
 // Add one small setting without changing Sportka's existing layout or styles.
 const rememberLabel=document.createElement('label');rememberLabel.style.cssText='display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#8bb7f0';
