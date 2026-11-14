@@ -616,7 +616,7 @@ const isWin=b=>/^výhra/i.test(String(b.result||''))||String(b.result||'').toLow
 const isLoss=b=>/^prohra/i.test(String(b.result||''));
 const statRow=(parent,label,value,desc)=>{const x=el('div','sportka-stat');x.append(el('div','sportka-stat-label',label),el('strong','',value));if(desc)x.append(el('small','',desc));parent.append(x)};
 const css=`
-#sportkaAnalytics{margin:18px auto 26px;max-width:825px;border:1px solid #394d70;border-radius:8px;background:#1c2740;color:#d8e6ff;padding:16px;font:14px system-ui,sans-serif;box-sizing:border-box}
+#sportkaAnalytics{margin:16px 0;max-width:100%;border:1px solid #394d70;border-radius:8px;background:#1c2740;color:#d8e6ff;padding:16px;font:14px system-ui,sans-serif;box-sizing:border-box}
 #sportkaAnalytics summary{cursor:pointer;color:#89b9ff;font-weight:700;font-size:17px;user-select:none}
 #sportkaAnalytics .sportka-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin:14px 0}
 #sportkaAnalytics .sportka-stat{background:#24334f;border:1px solid #3c5072;border-radius:6px;padding:10px;min-width:0}
@@ -636,7 +636,7 @@ const css=`
 function init(){if(document.getElementById('sportkaAnalytics'))return;let style=el('style');style.textContent=css;document.head.append(style);
 const panel=el('details');panel.id='sportkaAnalytics';panel.append(el('summary','', '📊 Učení z CSV · statistiky · finanční bilance'));
 const content=el('div');panel.append(content);
-const main=document.querySelector('main');if(!main)return;main.append(panel);
+const settings=document.querySelector('#sportkaSettings .side-inner');if(!settings)return;settings.append(panel);
 function render(){content.replaceChildren();const d=get(), bets=d.bets, history=d.history, complete=bets.filter(b=>isWin(b)||isLoss(b)),wins=complete.filter(isWin),losses=complete.filter(isLoss),pending=bets.length-complete.length;
 let cost=num(localStorage.getItem(COST_KEY)),payout=wins.reduce((sum,b)=>sum+num(b.amount),0),knownPayout=wins.filter(b=>num(b.amount)>0).length,spend=bets.length*cost;
 let grid=el('div','sportka-stat-grid');statRow(grid,'Historie losování',fmt(history.length));statRow(grid,'Evidované sloupce',fmt(bets.length));statRow(grid,'Vyhodnocené',fmt(complete.length));statRow(grid,'Výherní / proherní',`${wins.length} / ${losses.length}`);statRow(grid,'Čekají na výsledek',fmt(pending));statRow(grid,'Zadané výhry',money(payout),`${knownPayout} z ${wins.length} výher má částku > 0`);content.append(grid);
