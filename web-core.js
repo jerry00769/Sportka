@@ -59,18 +59,9 @@ const csvContent=name=>name==='vsazene_kombinace.csv'?betsCSV():name==='sportka_
 let localCsvDirectory=null,localCsvQueue=Promise.resolve(),csvPending=localStorage.getItem('sportka_csv_pending')==='1';
 function csvStatus(s){const el=$('sportkaCsvStatus');if(el)el.textContent=s}
 function queueLocalCsv(){
- // Stejný automatický místní zápis jako Eurojackpot; funguje pouze na vlastním lokálním serveru.
- const onLocalServer=location.protocol==='http:'&&location.hostname==='127.0.0.1'&&location.port==='8765';
- if(!onLocalServer&&!localCsvDirectory)return;
+ if(!localCsvDirectory)return;
  const snapshot=CSV_FILES.map(name=>[name,csvContent(name)]);
  localCsvQueue=localCsvQueue.catch(()=>{}).then(async()=>{
-  if(onLocalServer){
-   const payload=Object.fromEntries(snapshot);
-   const response=await fetch('/__sportka_csv_write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-   if(!response.ok)throw Error('Lokální server odmítl zápis ('+response.status+').');
-   csvStatus('Místní CSV: automaticky uloženo');
-   return;
-  }
   if(await localCsvDirectory.queryPermission({mode:'readwrite'})!=='granted')throw Error('Složka nemá oprávnění k zápisu.');
   for(const [name,content] of snapshot){const file=await localCsvDirectory.getFileHandle(name,{create:true});const writer=await file.createWritable();try{await writer.write(content);await writer.close()}catch(e){await writer.abort().catch(()=>{});throw e}}
   csvStatus('Místní CSV: uloženo');
@@ -307,8 +298,8 @@ const csvLabel=document.createElement('span');csvLabel.id='sportkaCsvStatus';csv
 $('exportBets').insertAdjacentElement('afterend',csvPanel);
 $('owner').value=cfg.owner||'';$('repo').value=cfg.repo||'';
 // Add one small setting without changing Sportka's existing layout or styles.
-const rememberLabel=document.createElement('label');rememberLabel.style.cssText='display:flex;align-items:center;justify-content:flex-start;gap:5px;font-size:12px;color:#8bb7f0;width:100%;margin:4px 0 7px 0;white-space:nowrap';
-const rememberBox=document.createElement('input');rememberBox.type='checkbox';rememberBox.id='sportkaRemember';rememberBox.checked=!!localStorage.getItem(REMEMBER);
+const rememberLabel=document.createElement('label');rememberLabel.style.cssText='display:flex!important;flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;gap:6px!important;width:100%!important;margin:4px 0 8px!important;font-size:12px;color:#8bb7f0;text-align:left!important';
+const rememberBox=document.createElement('input');rememberBox.type='checkbox';rememberBox.id='sportkaRemember';rememberBox.style.cssText='width:14px!important;height:14px!important;min-width:14px!important;flex:0 0 14px!important;margin:0!important;';rememberBox.checked=!!localStorage.getItem(REMEMBER);
 rememberLabel.append(rememberBox,document.createTextNode('Pamatovat klíč na tomto zařízení'));
 $('token').insertAdjacentElement('afterend',rememberLabel);
 let now=new Date(),d=new Date(now);while(![0,3,5].includes(d.getDay()))d.setDate(d.getDate()+1);$('date').value=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
