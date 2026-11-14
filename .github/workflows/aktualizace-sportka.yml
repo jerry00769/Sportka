@@ -17,11 +17,13 @@ jobs:
       - run: pip install requests beautifulsoup4
       - name: Doplnit historii
         run: python scripts/update-history.py
+      - name: Doplnit výplatní tabulky
+        run: python scripts/update-payouts.py
       - name: Uložit změny
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add sportka.csv
+          git add sportka.csv sportka-vyhry.js
           if ! git diff --cached --quiet; then
             git commit -m 'Sportka: aktualizace historie losování'
             git push
