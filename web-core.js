@@ -307,7 +307,7 @@ const csvLabel=document.createElement('span');csvLabel.id='sportkaCsvStatus';csv
 $('exportBets').insertAdjacentElement('afterend',csvPanel);
 $('owner').value=cfg.owner||'';$('repo').value=cfg.repo||'';
 // Add one small setting without changing Sportka's existing layout or styles.
-const rememberLabel=document.createElement('label');rememberLabel.style.cssText='display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#8bb7f0';
+const rememberLabel=document.createElement('label');rememberLabel.style.cssText='display:flex;align-items:center;justify-content:flex-start;gap:5px;font-size:12px;color:#8bb7f0;width:100%;margin:4px 0 7px 0;white-space:nowrap';
 const rememberBox=document.createElement('input');rememberBox.type='checkbox';rememberBox.id='sportkaRemember';rememberBox.checked=!!localStorage.getItem(REMEMBER);
 rememberLabel.append(rememberBox,document.createTextNode('Pamatovat klíč na tomto zařízení'));
 $('token').insertAdjacentElement('afterend',rememberLabel);
