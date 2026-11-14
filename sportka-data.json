@@ -103411,7 +103411,888 @@
       ]
     }
   ],
-  "bets": [],
+  "bets": [
+    {
+      "date": "2025-08-29",
+      "numbers": [
+        12,
+        22,
+        23,
+        31,
+        42,
+        45
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 1,
+      "hits1": "31",
+      "hits2": "",
+      "_savedAt": 1794672600105,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-08-29",
+      "numbers": [
+        5,
+        10,
+        15,
+        16,
+        21,
+        35
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 2,
+      "hits1": "",
+      "hits2": "10,16",
+      "_savedAt": 1794672600106,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-08-29",
+      "numbers": [
+        1,
+        5,
+        16,
+        19,
+        28,
+        35
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 3,
+      "hits1": "",
+      "hits2": "16",
+      "_savedAt": 1794672600107,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-08-29",
+      "numbers": [
+        12,
+        23,
+        32,
+        35,
+        44,
+        45
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 4,
+      "hits1": "",
+      "hits2": "",
+      "_savedAt": 1794672600108,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-08-29",
+      "numbers": [
+        8,
+        11,
+        15,
+        28,
+        39,
+        42
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 5,
+      "hits1": "",
+      "hits2": "11",
+      "_savedAt": 1794672600109,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-08-29",
+      "numbers": [
+        6,
+        11,
+        24,
+        27,
+        29,
+        36
+      ],
+      "result": "Výhra (5. pořadí)",
+      "method": "Python AI metoda",
+      "amount": "169",
+      "order": 6,
+      "hits1": "6",
+      "hits2": "6,11,27",
+      "_savedAt": 1794672600110,
+      "ranks": [
+        0,
+        5
+      ]
+    },
+    {
+      "date": "2025-08-29",
+      "numbers": [
+        1,
+        2,
+        5,
+        10,
+        19,
+        36
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 7,
+      "hits1": "",
+      "hits2": "10",
+      "_savedAt": 1794672600111,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-08-29",
+      "numbers": [
+        5,
+        9,
+        12,
+        21,
+        31,
+        42
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 8,
+      "hits1": "9,31",
+      "hits2": "",
+      "_savedAt": 1794672600112,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-12",
+      "numbers": [
+        7,
+        10,
+        18,
+        25,
+        43,
+        47
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 9,
+      "hits1": "",
+      "hits2": "7",
+      "_savedAt": 1794672600113,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-12",
+      "numbers": [
+        3,
+        7,
+        10,
+        16,
+        27,
+        37
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 10,
+      "hits1": "37",
+      "hits2": "7,37",
+      "_savedAt": 1794672600114,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-12",
+      "numbers": [
+        7,
+        14,
+        27,
+        35,
+        36,
+        40
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 11,
+      "hits1": "",
+      "hits2": "7,36",
+      "_savedAt": 1794672600115,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-12",
+      "numbers": [
+        4,
+        7,
+        15,
+        18,
+        30,
+        42
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 12,
+      "hits1": "15",
+      "hits2": "7",
+      "_savedAt": 1794672600116,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-12",
+      "numbers": [
+        6,
+        14,
+        35,
+        37,
+        45,
+        46
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 13,
+      "hits1": "6,37",
+      "hits2": "37",
+      "_savedAt": 1794672600117,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-12",
+      "numbers": [
+        7,
+        16,
+        27,
+        35,
+        36,
+        40
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 14,
+      "hits1": "",
+      "hits2": "7,36",
+      "_savedAt": 1794672600118,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-12",
+      "numbers": [
+        5,
+        6,
+        16,
+        21,
+        26,
+        44
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 15,
+      "hits1": "6",
+      "hits2": "",
+      "_savedAt": 1794672600119,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-12",
+      "numbers": [
+        1,
+        6,
+        8,
+        21,
+        29,
+        38
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 16,
+      "hits1": "6,29",
+      "hits2": "",
+      "_savedAt": 1794672600120,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-17",
+      "numbers": [
+        1,
+        25,
+        29,
+        32,
+        33,
+        40
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 17,
+      "hits1": "",
+      "hits2": "",
+      "_savedAt": 1794672600121,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-17",
+      "numbers": [
+        1,
+        14,
+        26,
+        35,
+        37,
+        39
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 18,
+      "hits1": "26",
+      "hits2": "14",
+      "_savedAt": 1794672600122,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-17",
+      "numbers": [
+        14,
+        27,
+        34,
+        35,
+        40,
+        41
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 19,
+      "hits1": "41",
+      "hits2": "14",
+      "_savedAt": 1794672600123,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-17",
+      "numbers": [
+        14,
+        17,
+        31,
+        37,
+        41,
+        44
+      ],
+      "result": "Výhra (5. pořadí)",
+      "method": "Python AI metoda",
+      "amount": "195",
+      "order": 20,
+      "hits1": "17,41,44",
+      "hits2": "14",
+      "_savedAt": 1794672600124,
+      "ranks": [
+        5,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-17",
+      "numbers": [
+        5,
+        23,
+        31,
+        36,
+        37,
+        42
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 21,
+      "hits1": "",
+      "hits2": "",
+      "_savedAt": 1794672600125,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-17",
+      "numbers": [
+        13,
+        20,
+        22,
+        38,
+        39,
+        45
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 22,
+      "hits1": "",
+      "hits2": "13,38",
+      "_savedAt": 1794672600126,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-17",
+      "numbers": [
+        12,
+        18,
+        26,
+        39,
+        41,
+        48
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 23,
+      "hits1": "26,41",
+      "hits2": "18",
+      "_savedAt": 1794672600127,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-17",
+      "numbers": [
+        14,
+        24,
+        26,
+        35,
+        38,
+        43
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 24,
+      "hits1": "26",
+      "hits2": "14,38",
+      "_savedAt": 1794672600128,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-24",
+      "numbers": [
+        4,
+        14,
+        27,
+        28,
+        32,
+        41
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 25,
+      "hits1": "",
+      "hits2": "",
+      "_savedAt": 1794672600129,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-24",
+      "numbers": [
+        7,
+        15,
+        33,
+        38,
+        42,
+        48
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 26,
+      "hits1": "",
+      "hits2": "38",
+      "_savedAt": 1794672600130,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-24",
+      "numbers": [
+        14,
+        25,
+        31,
+        37,
+        41,
+        44
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 27,
+      "hits1": "25,44",
+      "hits2": "44",
+      "_savedAt": 1794672600131,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-24",
+      "numbers": [
+        2,
+        15,
+        25,
+        32,
+        40,
+        48
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 28,
+      "hits1": "25",
+      "hits2": "",
+      "_savedAt": 1794672600132,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-24",
+      "numbers": [
+        18,
+        26,
+        35,
+        39,
+        41,
+        48
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 29,
+      "hits1": "26,35",
+      "hits2": "",
+      "_savedAt": 1794672600133,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-24",
+      "numbers": [
+        21,
+        26,
+        31,
+        34,
+        44,
+        49
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 30,
+      "hits1": "26,44",
+      "hits2": "34,44",
+      "_savedAt": 1794672600134,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-24",
+      "numbers": [
+        8,
+        11,
+        14,
+        21,
+        41,
+        49
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 31,
+      "hits1": "",
+      "hits2": "",
+      "_savedAt": 1794672600135,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2025-09-24",
+      "numbers": [
+        13,
+        18,
+        23,
+        30,
+        33,
+        34
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 32,
+      "hits1": "13",
+      "hits2": "34",
+      "_savedAt": 1794672600136,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2026-06-12",
+      "numbers": [
+        14,
+        26,
+        30,
+        36,
+        41,
+        44
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 33,
+      "hits1": "14,26",
+      "hits2": "",
+      "_savedAt": 1794672600137,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2026-06-12",
+      "numbers": [
+        29,
+        31,
+        41,
+        44,
+        47,
+        49
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 34,
+      "hits1": "",
+      "hits2": "49",
+      "_savedAt": 1794672600138,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2026-06-12",
+      "numbers": [
+        5,
+        6,
+        20,
+        30,
+        44,
+        47
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 35,
+      "hits1": "",
+      "hits2": "",
+      "_savedAt": 1794672600139,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2026-06-12",
+      "numbers": [
+        6,
+        20,
+        26,
+        29,
+        34,
+        40
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 36,
+      "hits1": "26",
+      "hits2": "40",
+      "_savedAt": 1794672600140,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2026-06-12",
+      "numbers": [
+        13,
+        30,
+        34,
+        40,
+        42,
+        47
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 37,
+      "hits1": "13",
+      "hits2": "40",
+      "_savedAt": 1794672600141,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2026-06-12",
+      "numbers": [
+        6,
+        17,
+        19,
+        36,
+        40,
+        44
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 38,
+      "hits1": "",
+      "hits2": "40",
+      "_savedAt": 1794672600142,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2026-06-12",
+      "numbers": [
+        18,
+        20,
+        29,
+        30,
+        38,
+        41
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 39,
+      "hits1": "",
+      "hits2": "18",
+      "_savedAt": 1794672600143,
+      "ranks": [
+        0,
+        0
+      ]
+    },
+    {
+      "date": "2026-06-12",
+      "numbers": [
+        6,
+        12,
+        13,
+        26,
+        36,
+        39
+      ],
+      "result": "Prohra",
+      "method": "Python AI metoda",
+      "amount": "0",
+      "order": 40,
+      "hits1": "13,26",
+      "hits2": "",
+      "_savedAt": 1794672600144,
+      "ranks": [
+        0,
+        0
+      ]
+    }
+  ],
   "predictions": [
     [
       4,
