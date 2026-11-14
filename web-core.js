@@ -28,6 +28,30 @@ function syncStatus(message,kind='info'){
 }
 const syncSignal=ok=>{syncState=ok?'ok':'error';syncStatus(ok?'data synchronizována':'chyba synchronizace',ok?'ok':'error')};
 const store=()=>localStorage.setItem(KEY,JSON.stringify(data));const config=()=>cfg.owner&&cfg.repo&&cfg.token;
+// Veřejný repozitář je čitelný bez tokenu. Token nikdy neposíláme na raw.githubusercontent.com.
+const PUBLIC_OWNER='jerry00769',PUBLIC_REPO='Sportka';
+let publicPolling=false,publicCheckedAt=0;
+async function pullPublic(){
+ if(config()||saving||polling||publicPolling||!navigator.onLine)return false;
+ publicPolling=true;
+ try{
+  const rev=revision;
+  const owner=cfg.owner||PUBLIC_OWNER,repo=cfg.repo||PUBLIC_REPO;
+  const url=`https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/main/${REMOTE}?t=${Date.now()}`;
+  const response=await fetch(url,{cache:'no-store'});
+  if(!response.ok)throw Error('Veřejný GitHub HTTP '+response.status);
+  const remoteData=await response.json();validate(remoteData);
+  if(revision!==rev)return false;
+  // Nikdy nepřepisovat lokální neodeslané sázky prázdnou vzdálenou verzí.
+  const combined=mergeShared(remoteData,data);
+  applyShared(combined);
+  publicCheckedAt=Date.now();
+  syncStatus(dirty?'Veřejná data načtena · místní změny neodeslány':'Veřejná data načtena · pouze čtení',dirty?'info':'ok');
+  return true;
+ }catch(e){syncStatus('Veřejné načtení: '+e.message,'error');return false}
+ finally{publicPolling=false}
+}
+
 const persist=()=>{revision++;dirty=true;conflict=false;localStorage.setItem(DIRTY,'1');store();syncState='dirty';syncStatus(config()?'místní změny čekají na odeslání':'Změny jsou jen v tomto zařízení. Pro odeslání nastav klíč.',config()?'info':'error');if(config()){clearTimeout(timer);timer=setTimeout(()=>autosave().catch(e=>syncStatus(e.message,'error')),350)}};
 const betKey=b=>String(b.date)+'|'+(valid(b.numbers)||b.numbers||[]).join(',');
 function markDeleted(rows){const now=Date.now();data.deletedBets={...(data.deletedBets||{})};for(const b of rows){const k=betKey(b);data.deletedBets[k]=Math.max(Number(data.deletedBets[k])||0,now)}}
@@ -221,8 +245,6 @@ $('owner').value=cfg.owner||'';$('repo').value=cfg.repo||'';
 // Add one small setting without changing Sportka's existing layout or styles.
 const rememberLabel=document.createElement('label');rememberLabel.style.cssText='display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#8bb7f0';
 const rememberBox=document.createElement('input');rememberBox.type='checkbox';rememberBox.id='sportkaRemember';rememberBox.checked=!!localStorage.getItem(REMEMBER);
-rememberBox.style.cssText='width:14px;min-width:14px;max-width:14px;height:14px;flex:0 0 14px;margin:0;padding:0;vertical-align:middle';
-rememberLabel.style.cssText+=';justify-content:flex-start;text-align:left;white-space:nowrap;width:100%;line-height:18px';
 rememberLabel.append(rememberBox,document.createTextNode('Pamatovat klíč na tomto zařízení'));
 $('token').insertAdjacentElement('afterend',rememberLabel);
 let now=new Date(),d=new Date(now);while(![0,3,5].includes(d.getDay()))d.setDate(d.getDate()+1);$('date').value=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
@@ -239,9 +261,9 @@ if(typeof flatpickr==='function'){
 }else{
  $('date').type='date';$('date').readOnly=false;
 }
-seed();evaluate(true);render();syncStatus(config()?(dirty?'místní změny čekají na odeslání':'připojeno – ověřuji synchronizaci'):'nepřipojeno',config()?'info':'error');(async()=>{try{await refresh()}catch(e){info(e.message,true)}if(config()){try{await pull();await refresh()}catch(e){syncStatus(e.message,'error')}}if(!data.predictions.length&&data.history.length){try{generate(true)}catch(e){info('Automatické generování: '+e.message,true)}}})();
-setInterval(()=>{if(config()&&navigator.onLine){if(dirty&&!conflict)autosave().catch(e=>info(e.message,true));else if(!dirty)periodicSync()}},SYNC_MS);
-window.addEventListener('online',()=>periodicSync());
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)periodicSync()});
+seed();evaluate(true);render();syncStatus(config()?(dirty?'místní změny čekají na odeslání':'připojeno – ověřuji synchronizaci'):'nepřipojeno',config()?'info':'error');(async()=>{try{await refresh()}catch(e){info(e.message,true)}if(config()){try{await pull();await refresh()}catch(e){syncStatus(e.message,'error')}}else{await pullPublic()}if(!data.predictions.length&&data.history.length){try{generate(true)}catch(e){info('Automatické generování: '+e.message,true)}}})();
+setInterval(()=>{if(!navigator.onLine)return;if(config()){if(dirty&&!conflict)autosave().catch(e=>info(e.message,true));else if(!dirty)periodicSync()}else if(Date.now()-publicCheckedAt>SYNC_MS)pullPublic()},SYNC_MS);
+window.addEventListener('online',()=>config()?periodicSync():pullPublic());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)(config()?periodicSync():pullPublic())});
 if(dirty&&config()&&!conflict)autosave().catch(e=>info(e.message,true));
 })();
