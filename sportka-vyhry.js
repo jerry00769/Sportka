@@ -1,4 +1,4 @@
-/* Date-scoped Sportka payout cache; independent informational archive, not official validation. */
+/* Date-scoped Sportka payout tables; independent informational archive. */
 window.SPORTKA_PAYOUTS={
   "2025-08-29": {
     "draws": [
@@ -39,6 +39,45 @@ window.SPORTKA_PAYOUTS={
     ],
     "source": "https://www.sportkasazka.cz/vysledky-2025-08-29/"
   },
+  "2025-09-12": {
+    "draws": [
+      [
+        29,
+        15,
+        37,
+        6,
+        2,
+        24,
+        33
+      ],
+      [
+        17,
+        37,
+        36,
+        34,
+        12,
+        7,
+        28
+      ]
+    ],
+    "prizes": [
+      [
+        0,
+        0,
+        27291,
+        496938,
+        967173
+      ],
+      [
+        0,
+        0,
+        28232,
+        574891,
+        430170
+      ]
+    ],
+    "source": "https://www.sportkasazka.cz/vysledky-2025-09-12/"
+  },
   "2025-09-17": {
     "draws": [
       [
@@ -77,5 +116,83 @@ window.SPORTKA_PAYOUTS={
       ]
     ],
     "source": "https://www.sportkasazka.cz/vysledky-2025-09-17/"
+  },
+  "2025-09-24": {
+    "draws": [
+      [
+        26,
+        25,
+        35,
+        44,
+        1,
+        13,
+        17
+      ],
+      [
+        38,
+        47,
+        34,
+        44,
+        29,
+        19,
+        33
+      ]
+    ],
+    "prizes": [
+      [
+        0,
+        1000000,
+        35791,
+        213961,
+        125181
+      ],
+      [
+        0,
+        1000000,
+        34002,
+        255928,
+        674177
+      ]
+    ],
+    "source": "https://www.sportkasazka.cz/vysledky-2025-09-24/"
+  },
+  "2026-06-12": {
+    "draws": [
+      [
+        25,
+        13,
+        26,
+        11,
+        45,
+        14,
+        1
+      ],
+      [
+        40,
+        3,
+        25,
+        18,
+        4,
+        49,
+        43
+      ]
+    ],
+    "prizes": [
+      [
+        0,
+        542225,
+        36148,
+        307995,
+        473183
+      ],
+      [
+        0,
+        0,
+        34505,
+        343968,
+        25179
+      ]
+    ],
+    "source": "https://www.sportkasazka.cz/vysledky-2026-06-12/"
   }
 };
